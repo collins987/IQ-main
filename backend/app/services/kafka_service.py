@@ -112,7 +112,7 @@ class KafkaProducerService:
             self._producer = AIOKafkaProducer(
                 bootstrap_servers=self.config.bootstrap_servers,
                 acks=self.config.acks,
-                retries=self.config.retries,
+                # Note: aiokafka handles retries internally via metadata refresh
                 retry_backoff_ms=self.config.retry_backoff_ms,
                 value_serializer=self.config.value_serializer(),
                 request_timeout_ms=self.config.request_timeout_ms,
