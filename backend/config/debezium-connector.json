@@ -1,0 +1,44 @@
+{
+  "name": "sentineliq-outbox-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "plugin.name": "pgoutput",
+    
+    "database.hostname": "postgres",
+    "database.port": "5432",
+    "database.user": "postgres",
+    "database.password": "postgres",
+    "database.dbname": "sentineliq",
+    "database.server.name": "sentineliq",
+    
+    "schema.include.list": "public",
+    "table.include.list": "public.event_outbox",
+    
+    "transforms": "outbox",
+    "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+    "transforms.outbox.table.field.event.id": "id",
+    "transforms.outbox.table.field.event.key": "aggregate_id",
+    "transforms.outbox.table.field.event.type": "event_type",
+    "transforms.outbox.table.field.event.payload": "payload",
+    "transforms.outbox.table.field.event.timestamp": "created_at",
+    "transforms.outbox.route.by.field": "event_type",
+    "transforms.outbox.route.topic.replacement": "sentineliq.events.${routedByValue}",
+    
+    "tombstones.on.delete": "false",
+    "topic.prefix": "sentineliq",
+    
+    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "key.converter.schemas.enable": "false",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": "false",
+    
+    "slot.name": "sentineliq_outbox_slot",
+    "publication.name": "sentineliq_outbox_pub",
+    
+    "heartbeat.interval.ms": "10000",
+    "poll.interval.ms": "100",
+    
+    "snapshot.mode": "initial",
+    "include.schema.changes": "false"
+  }
+}

@@ -1,6 +1,20 @@
 # app/config.py
+"""
+SentinelIQ Configuration Module
+
+Centralizes all configuration with:
+- Environment variable loading
+- Type validation
+- Sensible defaults
+- Settings class for dependency injection
+
+Compliance: Follows 12-factor app methodology
+"""
+
 import os
 import logging
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional
 
 SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey")
 ALGORITHM = "HS256"
@@ -123,3 +137,87 @@ RISK_THRESHOLDS = {
     "challenge": 0.60, # 0.60 - 0.80
     "block": 0.80      # >= 0.80
 }
+
+# ============================================================================
+# Kafka Configuration
+# ============================================================================
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
+KAFKA_ENABLED = os.getenv("KAFKA_ENABLED", "true").lower() == "true"
+KAFKA_CONSUMER_GROUP = os.getenv("KAFKA_CONSUMER_GROUP", "sentineliq-consumers")
+
+# ============================================================================
+# ML Configuration
+# ============================================================================
+ML_MODEL_PATH = os.getenv("ML_MODEL_PATH", "/app/models/fraud_model.pkl")
+ML_ENABLED = os.getenv("ML_ENABLED", "true").lower() == "true"
+ML_ANOMALY_THRESHOLD = float(os.getenv("ML_ANOMALY_THRESHOLD", "0.5"))
+
+# ============================================================================
+# Rate Limiting Configuration
+# ============================================================================
+RATE_LIMIT_ENABLED = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
+RATE_LIMIT_DEFAULT_REQUESTS = int(os.getenv("RATE_LIMIT_DEFAULT_REQUESTS", "100"))
+RATE_LIMIT_DEFAULT_WINDOW_SECONDS = int(os.getenv("RATE_LIMIT_DEFAULT_WINDOW_SECONDS", "60"))
+
+# ============================================================================
+# ABAC Configuration
+# ============================================================================
+ABAC_ENABLED = os.getenv("ABAC_ENABLED", "true").lower() == "true"
+
+# ============================================================================
+# Settings Class (for dependency injection)
+# ============================================================================
+
+@dataclass
+class Settings:
+    """
+    Application settings with type hints and defaults.
+    
+    Use this class for type-safe configuration access.
+    """
+    # Core
+    secret_key: str = SECRET_KEY
+    algorithm: str = ALGORITHM
+    access_token_expire_minutes: int = ACCESS_TOKEN_EXPIRE_MINUTES
+    refresh_token_expire_days: int = REFRESH_TOKEN_EXPIRE_DAYS
+    
+    # Redis
+    redis_url: str = field(default_factory=lambda: REDIS_URL)
+    
+    # Database
+    database_url: str = field(
+        default_factory=lambda: os.getenv(
+            "DATABASE_URL", 
+            "postgresql://postgres:postgres@db:5432/sentineliq"
+        )
+    )
+    
+    # Kafka
+    kafka_bootstrap_servers: str = field(default_factory=lambda: KAFKA_BOOTSTRAP_SERVERS)
+    kafka_enabled: bool = field(default_factory=lambda: KAFKA_ENABLED)
+    
+    # Vault
+    vault_addr: str = field(default_factory=lambda: VAULT_ADDR)
+    vault_token: str = field(default_factory=lambda: VAULT_TOKEN)
+    
+    # MinIO
+    minio_endpoint: str = field(default_factory=lambda: MINIO_ENDPOINT)
+    minio_access_key: str = field(default_factory=lambda: MINIO_ACCESS_KEY)
+    minio_secret_key: str = field(default_factory=lambda: MINIO_SECRET_KEY)
+    minio_secure: bool = field(default_factory=lambda: MINIO_SECURE)
+    
+    # ML
+    ml_model_path: str = field(default_factory=lambda: ML_MODEL_PATH)
+    ml_enabled: bool = field(default_factory=lambda: ML_ENABLED)
+    
+    # Rate Limiting
+    rate_limit_enabled: bool = field(default_factory=lambda: RATE_LIMIT_ENABLED)
+    
+    # Email
+    email_from: str = field(default_factory=lambda: EMAIL_FROM)
+    smtp_host: str = field(default_factory=lambda: SMTP_HOST)
+    smtp_port: int = field(default_factory=lambda: SMTP_PORT)
+
+
+# Singleton settings instance
+settings = Settings()

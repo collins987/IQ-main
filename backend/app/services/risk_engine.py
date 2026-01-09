@@ -107,6 +107,22 @@ class RiskEngine:
                 behavioral_score = max(behavioral_results["scores"]) if behavioral_results["scores"] else 0
                 risk_score = (risk_score * 0.7) + (behavioral_score * 0.3)
             
+            # Step 3.5: User-Agent Anomaly Detection (Levenshtein distance)
+            ua_results = self._evaluate_user_agent_anomaly(event)
+            if ua_results.get("is_anomaly"):
+                all_triggered_rules.append("ua_anomaly_detected")
+                behavioral_flags.append("user_agent_anomaly")
+                risk_score = max(risk_score, ua_results.get("score", 0.5))
+            
+            # Step 3.6: ML-based Anomaly Detection (Isolation Forest)
+            ml_results = await self._evaluate_ml_anomaly(event)
+            if ml_results.get("is_anomaly"):
+                all_triggered_rules.append("ml_anomaly_detected")
+                behavioral_flags.append("ml_isolation_forest_anomaly")
+                # Blend ML score with rule-based score
+                ml_weight = 0.3  # ML contributes 30% to final score
+                risk_score = (risk_score * (1 - ml_weight)) + (ml_results["score"] * ml_weight)
+            
             # Step 4: Apply rule combinations (meta-rules)
             combo_boost = self._evaluate_rule_combinations(all_triggered_rules)
             risk_score = min(1.0, risk_score + combo_boost)
@@ -421,6 +437,132 @@ class RiskEngine:
         except Exception as e:
             logger.error(f"Error logging risk decision: {e}")
             db_session.rollback()
+    
+    def _evaluate_user_agent_anomaly(self, event: SentinelEvent) -> Dict[str, Any]:
+        """
+        Evaluate User-Agent for anomalies using Levenshtein distance.
+        
+        Detects subtle UA modifications that may indicate spoofing.
+        """
+        try:
+            from app.services.ua_anomaly import check_ua_anomaly
+            
+            user_agent = event.actor.user_agent
+            user_id = event.actor.user_id
+            
+            if not user_agent or not user_id:
+                return {"is_anomaly": False, "score": 0.0}
+            
+            is_anomaly, score, reasons = check_ua_anomaly(
+                user_id=user_id,
+                user_agent=user_agent,
+                session_id=event.context.session_id
+            )
+            
+            if is_anomaly:
+                logger.warning(
+                    f"UA anomaly detected for user {user_id}: "
+                    f"score={score:.2f}, reasons={reasons}"
+                )
+            
+            return {
+                "is_anomaly": is_anomaly,
+                "score": score,
+                "reasons": reasons
+            }
+            
+        except ImportError:
+            logger.debug("UA anomaly detection not available")
+            return {"is_anomaly": False, "score": 0.0}
+        except Exception as e:
+            logger.error(f"UA anomaly detection error: {e}")
+            return {"is_anomaly": False, "score": 0.0}
+    
+    async def _evaluate_ml_anomaly(self, event: SentinelEvent) -> Dict[str, Any]:
+        """
+        Evaluate event using ML Isolation Forest model.
+        
+        Returns ML-based anomaly score for ensemble with rule-based scoring.
+        """
+        try:
+            from app.services.ml_engine import get_ml_engine
+            from app.config import ML_ENABLED
+            
+            if not ML_ENABLED:
+                return {"is_anomaly": False, "score": 0.0}
+            
+            ml_engine = get_ml_engine()
+            
+            # Build transaction dict from event
+            transaction = {
+                "amount": event.context.amount or 0,
+                "timestamp": event.timestamp,
+                "new_device": event.context.new_device,
+                "new_ip": event.context.new_ip,
+                "vpn_detected": event.context.proxy_detected,
+                "country_risk": self._get_country_risk(event.context.country_code),
+            }
+            
+            # Get user history for context
+            user_history = self._get_user_history(event.actor.user_id)
+            
+            # Score transaction
+            result = ml_engine.score_transaction(transaction, user_history)
+            
+            is_anomaly = result.get("is_ml_anomaly", False)
+            score = result.get("ml_score", 0.0)
+            
+            if is_anomaly:
+                logger.info(
+                    f"ML anomaly detected for event {event.event_id}: "
+                    f"score={score:.2f}, factors={result.get('top_risk_factors', [])}"
+                )
+            
+            return {
+                "is_anomaly": is_anomaly,
+                "score": score,
+                "factors": result.get("top_risk_factors", []),
+                "model_version": result.get("model_version", "unknown")
+            }
+            
+        except ImportError:
+            logger.debug("ML engine not available")
+            return {"is_anomaly": False, "score": 0.0}
+        except Exception as e:
+            logger.error(f"ML evaluation error: {e}")
+            return {"is_anomaly": False, "score": 0.0}
+    
+    def _get_country_risk(self, country_code: Optional[str]) -> float:
+        """Get risk score for a country."""
+        if not country_code:
+            return 0.3
+        
+        # High-risk countries (simplified - use proper list in production)
+        high_risk = {"KP", "IR", "SY", "CU", "VE", "MM", "YE", "LY", "SO", "SD"}
+        medium_risk = {"RU", "CN", "NG", "PK", "BD", "VN", "UA", "BY", "KZ"}
+        
+        if country_code.upper() in high_risk:
+            return 0.9
+        elif country_code.upper() in medium_risk:
+            return 0.5
+        else:
+            return 0.1
+    
+    def _get_user_history(self, user_id: str) -> Dict[str, Any]:
+        """Get user history for ML context."""
+        try:
+            # Get from Redis cache
+            velocity = self.redis.get_velocity_counters(user_id)
+            
+            return {
+                "transactions_1h": velocity.get("transactions_1h", 0),
+                "transactions_24h": velocity.get("transactions_24h", 0),
+                "avg_amount": velocity.get("avg_amount", 0),
+                "std_amount": velocity.get("std_amount", 1),
+                "distance_from_last": velocity.get("distance_from_last", 0)
+            }
+        except Exception:
+            return {}
 
 
 # Singleton instance

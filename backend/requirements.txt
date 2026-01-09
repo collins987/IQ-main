@@ -38,3 +38,23 @@ python-dotenv==1.0.0
 
 # Device fingerprinting
 user-agents==2.2.0
+
+# ============================================================================
+# NEW: Enterprise Security & Analytics
+# ============================================================================
+
+# Kafka event streaming
+aiokafka==0.10.0
+
+# HashiCorp Vault client
+hvac==2.1.0
+
+# Machine Learning (Isolation Forest)
+scikit-learn==1.4.0
+numpy==1.26.4
+
+# Cryptography for FAPI/mTLS
+cryptography==42.0.0
+
+# Async utilities
+aiofiles==23.2.1
