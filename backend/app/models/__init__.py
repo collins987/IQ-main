@@ -76,7 +76,8 @@ class User(Base):
     is_system_user = Column(Boolean, default=False)
     
     # Metadata (NEW) - stores device info, last login details, etc.
-    metadata = Column(JSON, default=dict)
+    # Named 'user_metadata' to avoid conflict with SQLAlchemy reserved 'metadata'
+    user_metadata = Column(JSON, default=dict)
     
     # Device and session tracking (NEW)
     last_login_at = Column(DateTime, nullable=True)
@@ -130,7 +131,7 @@ class User(Base):
             "risk_score": self.risk_score,
             "is_active": self.is_active,
             "email_verified": self.email_verified,
-            "metadata": self.metadata,
+            "user_metadata": self.user_metadata,
             "last_login_at": self.last_login_at.isoformat() if self.last_login_at else None,
             "last_login_ip": self.last_login_ip,
             "last_device_info": self.last_device_info,

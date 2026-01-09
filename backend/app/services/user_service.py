@@ -54,7 +54,7 @@ class UserService:
     ]
     
     METADATA_FIELDS = PUBLIC_FIELDS + [
-        "visibility", "metadata", "last_login_at", "email_verified"
+        "visibility", "user_metadata", "last_login_at", "email_verified"
     ]
     
     AUDIT_FIELDS = METADATA_FIELDS + [

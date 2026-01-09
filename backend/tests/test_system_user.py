@@ -96,7 +96,7 @@ def system_user():
     user.visibility = UserVisibility.GLOBAL.value
     user.is_system_user = True
     user.is_active = True
-    user.metadata = {"description": "System user"}
+    user.user_metadata = {"description": "System user"}
     user.last_login_at = None
     user.last_login_ip = None
     user.last_device_info = {}
