@@ -205,18 +205,45 @@ services:
   # Kafka & Debezium CDC - Enterprise Event Streaming
   # ============================================================================
 
-  # Zookeeper - Kafka coordination
+  # Zookeeper - Kafka coordination (Standalone Mode)
+  # Reference: https://docs.confluent.io/platform/current/zookeeper/deployment.html
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
     container_name: sentineliq_zookeeper
+    hostname: zookeeper
     environment:
+      # === Core ZooKeeper Configuration ===
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_INIT_LIMIT: 5
+      ZOOKEEPER_SYNC_LIMIT: 2
+      # Server ID (required even for standalone)
+      ZOOKEEPER_SERVER_ID: 1
+      # Empty for standalone mode - do NOT set ZOOKEEPER_SERVERS for single node
+      
+      # === JVM Memory Configuration ===
+      # Prevent OOM in containerized environments
+      KAFKA_HEAP_OPTS: "-Xms256m -Xmx512m"
+      
+      # === Enable 4-Letter-Word Commands for Healthcheck ===
+      # Confluent images disable most 4LW commands by default for security
+      # ruok: responds "imok" if running (used for healthcheck)
+      # srvr: provides server stats
+      # stat: provides connection stats  
+      # mntr: provides monitoring metrics
+      KAFKA_OPTS: "-Dzookeeper.4lw.commands.whitelist=ruok,srvr,stat,mntr"
+      
+      # === Session Configuration ===
+      ZOOKEEPER_MAX_CLIENT_CNXNS: 60
+      ZOOKEEPER_AUTOPURGE_SNAP_RETAIN_COUNT: 3
+      ZOOKEEPER_AUTOPURGE_PURGE_INTERVAL: 24
     volumes:
       - zookeeper_data:/var/lib/zookeeper/data
       - zookeeper_log:/var/lib/zookeeper/log
     healthcheck:
-      test: ["CMD-SHELL", "echo ruok | timeout 2 nc localhost 2181 | grep imok || exit 1"]
+      # Uses ruok 4LW command - responds "imok" if ZooKeeper is healthy
+      # nc (netcat) sends the command and grep checks for expected response
+      test: ["CMD-SHELL", "echo ruok | nc -w 5 localhost 2181 | grep -q imok"]
       interval: 10s
       timeout: 10s
       retries: 10
@@ -229,6 +256,7 @@ services:
   kafka:
     image: confluentinc/cp-kafka:7.5.0
     container_name: sentineliq_kafka
+    hostname: kafka
     depends_on:
       zookeeper:
         condition: service_healthy
@@ -246,6 +274,10 @@ services:
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
       KAFKA_LOG_RETENTION_HOURS: 168  # 7 days
+      # JVM Memory - prevent OOM in containers
+      KAFKA_HEAP_OPTS: "-Xms512m -Xmx1g"
+      # Connection timeout to ZooKeeper
+      KAFKA_ZOOKEEPER_CONNECTION_TIMEOUT_MS: 60000
     volumes:
       - kafka_data:/var/lib/kafka/data
     healthcheck:
