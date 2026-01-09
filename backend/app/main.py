@@ -6,7 +6,7 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from sqlalchemy import text
 from app.api import auth
-from app.routes import users, admin, email_verification, password_reset, analytics, events
+from app.routes import users, admin, email_verification, password_reset, analytics, events, dashboard
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.middleware.request_logging import RequestLoggingMiddleware, UserTrackingMiddleware
 from app.middleware.pii_scrubber import PIIScrubberMiddleware
@@ -15,7 +15,7 @@ from app.core.db import init_db, SessionLocal, engine
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST, REGISTRY
 from prometheus_fastapi_instrumentator import Instrumentator
 from app.models import Base
-from app.core.seed import seed_default_org
+from app.core.seed import seed_all
 from app.core.logging import logger
 from app.services.graph_service import router as graph_router
 from app.services.message_center import router as message_router
@@ -38,8 +38,12 @@ async def lifespan(app: FastAPI):
         Base.metadata.create_all(bind=engine)
         db = SessionLocal()
         try:
-            seed_default_org(db)
-            logger.info("Application startup - database initialized")
+            # Seed all required data (org, system user, admin)
+            seed_result = seed_all(db)
+            logger.info(
+                f"Application startup - database initialized, "
+                f"system user: {seed_result['system_user'].id}"
+            )
         finally:
             db.close()
     except Exception as e:
@@ -128,6 +132,7 @@ app.include_router(email_verification.router)  # MILESTONE 6: Step 3
 app.include_router(password_reset.router)  # MILESTONE 6: Step 4
 app.include_router(analytics.router)  # MILESTONE 8: Analytics & monitoring
 app.include_router(events.router)  # Event processing routes
+app.include_router(dashboard.router)  # Admin Dashboard API
 
 # ============================================================================
 # New Feature Routes

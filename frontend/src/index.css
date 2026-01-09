@@ -1,0 +1,203 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom base styles */
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+  
+  body {
+    @apply bg-dashboard-bg text-gray-100;
+  }
+  
+  /* Custom scrollbar for webkit browsers */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-dashboard-bg;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-dashboard-border rounded-full;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-dashboard-hover;
+  }
+}
+
+/* Custom component styles */
+@layer components {
+  /* Card styles */
+  .card {
+    @apply bg-dashboard-card border border-dashboard-border rounded-xl p-6;
+  }
+  
+  .card-header {
+    @apply flex items-center justify-between mb-4;
+  }
+  
+  .card-title {
+    @apply text-lg font-semibold text-white;
+  }
+  
+  /* Button variants */
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium 
+           transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 
+           focus:ring-offset-dashboard-bg disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-primary {
+    @apply btn bg-sentinel-600 hover:bg-sentinel-700 text-white focus:ring-sentinel-500;
+  }
+  
+  .btn-secondary {
+    @apply btn bg-dashboard-hover hover:bg-dashboard-border text-gray-100 focus:ring-gray-500;
+  }
+  
+  .btn-danger {
+    @apply btn bg-red-600 hover:bg-red-700 text-white focus:ring-red-500;
+  }
+  
+  .btn-ghost {
+    @apply btn bg-transparent hover:bg-dashboard-hover text-gray-300 hover:text-white;
+  }
+  
+  /* Input styles */
+  .input {
+    @apply w-full bg-dashboard-bg border border-dashboard-border rounded-lg px-4 py-2.5
+           text-white placeholder-gray-500 focus:outline-none focus:ring-2 
+           focus:ring-sentinel-500 focus:border-transparent transition-all;
+  }
+  
+  /* Badge styles */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  
+  .badge-success {
+    @apply badge bg-green-500/20 text-green-400;
+  }
+  
+  .badge-warning {
+    @apply badge bg-yellow-500/20 text-yellow-400;
+  }
+  
+  .badge-danger {
+    @apply badge bg-red-500/20 text-red-400;
+  }
+  
+  .badge-info {
+    @apply badge bg-blue-500/20 text-blue-400;
+  }
+  
+  .badge-neutral {
+    @apply badge bg-gray-500/20 text-gray-400;
+  }
+  
+  /* Status indicator */
+  .status-dot {
+    @apply w-2 h-2 rounded-full;
+  }
+  
+  .status-healthy {
+    @apply status-dot bg-green-500 animate-pulse;
+  }
+  
+  .status-degraded {
+    @apply status-dot bg-yellow-500 animate-pulse;
+  }
+  
+  .status-unhealthy {
+    @apply status-dot bg-red-500 animate-pulse;
+  }
+  
+  /* Table styles */
+  .table-container {
+    @apply overflow-x-auto;
+  }
+  
+  .table {
+    @apply w-full text-sm text-left;
+  }
+  
+  .table thead {
+    @apply text-xs text-gray-400 uppercase bg-dashboard-bg;
+  }
+  
+  .table th {
+    @apply px-4 py-3 font-medium;
+  }
+  
+  .table td {
+    @apply px-4 py-3 border-t border-dashboard-border;
+  }
+  
+  .table tbody tr {
+    @apply hover:bg-dashboard-hover/50 transition-colors;
+  }
+  
+  /* Sidebar nav item */
+  .nav-item {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 
+           hover:text-white hover:bg-dashboard-hover transition-all duration-200;
+  }
+  
+  .nav-item-active {
+    @apply nav-item text-white bg-sentinel-600/20 border-l-2 border-sentinel-500;
+  }
+  
+  /* Risk level indicator */
+  .risk-low {
+    @apply text-green-400;
+  }
+  
+  .risk-medium {
+    @apply text-yellow-400;
+  }
+  
+  .risk-high {
+    @apply text-red-400;
+  }
+  
+  .risk-critical {
+    @apply text-red-600 font-semibold;
+  }
+}
+
+/* Animation utilities */
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+  
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

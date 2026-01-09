@@ -50,37 +50,54 @@ ROLES = {
     "admin": {
         "description": "Full system access - manage users, settings, audit logs",
         "permissions": [
+            # Admin permissions
             "admin.dashboard",
             "admin.disable_user",
             "admin.enable_user",
             "admin.view_audit_logs",
             "admin.manage_organization",
+            # User management (full access)
             "users.create",
             "users.read_all",
+            "users.read_global",      # NEW: View system/global users
+            "users.read_metadata",    # NEW: View user metadata (device, login info)
+            "users.read_audit",       # NEW: View user access audit logs
             "users.update_any",
             "users.delete_any",
+            "users.manage",           # NEW: Full user management (status, visibility)
+            # Analytics
             "analytics.read",
             "analytics.write",
+            # Profile
             "profile.read_own",
             "profile.update_own",
         ]
     },
     "analyst": {
-        "description": "Data analysis access - read/write analysis, view reports",
+        "description": "Data analysis access - view user profiles with metadata, read/write analysis",
         "permissions": [
+            # Analytics
             "analytics.read",
             "analytics.write",
             "analytics.export",
+            # Profile
             "profile.read_own",
             "profile.update_own",
-            "users.read_own_org",
+            # User access (can view users with more detail than viewer)
+            "users.read_own_org",     # View org users with metadata
+            "users.read_global",      # View system users with metadata
+            "users.read_public",      # View public user profiles
+            "users.read_metadata",    # Can see user metadata (login info, risk score)
         ]
     },
     "viewer": {
-        "description": "Read-only access - view own profile and limited data",
+        "description": "Read-only access - view user profiles with limited/redacted fields",
         "permissions": [
             "profile.read_own",
             "profile.update_own",
+            "users.read_global",      # Can view system users (public fields only)
+            "users.read_public",      # View public user profiles (redacted)
+            "users.read_own_org",     # Can view users in same organization (public fields)
         ]
     }
 }

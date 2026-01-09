@@ -165,11 +165,61 @@ Gain unified visibility into fraud, security, and compliance events. Investigate
 
 ---
 
+## Admin Dashboard
+
+SentinelIQ includes a modern, production-ready admin dashboard built with React 18, TypeScript, and Tailwind CSS.
+
+### Features
+
+- **Real-Time Monitoring**: Live event streaming via WebSocket
+- **System Health**: Service status, latency metrics, error rates
+- **User Management**: Active sessions, user profiles, force logout
+- **Risk Analytics**: Risk distribution, high-risk user tracking
+- **Audit Logs**: Searchable, filterable audit trail with export
+- **Activity Feed**: Live event stream with severity filtering
+
+### Quick Start
+
+```bash
+# Start the backend first
+cd backend
+docker-compose up -d
+uvicorn app.main:app --reload --port 8000
+
+# Start the frontend
+cd ../frontend
+npm install
+npm run dev
+```
+
+The dashboard will be available at `http://localhost:3000`.
+
+### Default Login
+```
+Email: admin@sentineliq.com
+Password: admin123
+```
+
+### Screenshots
+
+The dashboard provides:
+- **Overview Page**: Stats cards, health status, risk summary, login trends
+- **User Management**: Paginated user list, detailed profiles, session management
+- **Risk Center**: Risk metrics, distribution charts, high-risk user alerts
+- **Audit Logs**: Filterable audit trail with CSV/JSON export
+- **Activity Feed**: Real-time event stream with WebSocket
+- **System Health**: Service monitoring with health gauges
+
+See [frontend/README.md](frontend/README.md) for detailed frontend documentation.
+
+---
+
 ## Getting Started
 
 ### Prerequisites
 - Docker & Docker Compose
 - Python 3.11+ (for local development)
+- Node.js 18+ (for frontend development)
 - PostgreSQL client (optional, for debugging)
 
 ### Quick Start
@@ -184,7 +234,8 @@ docker compose up --build
 
 # API will be available at http://localhost:8000
 # Documentation at http://localhost:8000/docs
-# Grafana at http://localhost:3000 (admin:admin)
+# Dashboard at http://localhost:3000
+# Grafana at http://localhost:3001 (admin:admin)
 ```
 
 ### Health Check
@@ -248,6 +299,103 @@ rules:
 
 ---
 
+## User Visibility & Access Control
+
+### Overview
+When users log into SentinelIQ, their profile details (name, ID, risk score, etc.) can be viewed by other users based on **role-based permissions**. This enables:
+- Admins to monitor all user activity and risk scores
+- Analysts to review user profiles for fraud investigation
+- Viewers to see basic user information within their organization
+
+### User Roles & What They Can See
+
+| Role | Description | User Access |
+|------|-------------|-------------|
+| **Admin** | Full system access | View ALL users with FULL details (name, email, risk score, login history, etc.) |
+| **Analyst** | Data analysis & investigation | View org users with metadata (name, role, risk score, login time) |
+| **Viewer** | Read-only access | View org users with public fields only (name, role, status) |
+
+### Example: Viewing a Logged-In User
+
+When user **John Doe** logs in, here's what each role sees:
+
+```
+ADMIN sees:
+{
+  "id": "user-123",
+  "first_name": "John",
+  "last_name": "Doe",
+  "email": "john.doe@company.com",     ← Full PII
+  "role": "analyst",
+  "risk_score": 25,                     ← Risk assessment
+  "last_login_at": "2026-01-09T10:30:00",
+  "last_login_ip": "192.168.1.100",    ← Full IP
+  "is_active": true,
+  "status": "active"
+}
+
+ANALYST sees:
+{
+  "id": "user-123",
+  "first_name": "John",
+  "last_name": "Doe",
+  "role": "analyst",
+  "status": "active",
+  "last_login_at": "2026-01-09T10:30:00",
+  "email_verified": true
+}
+
+VIEWER sees:
+{
+  "id": "user-123",
+  "first_name": "John",
+  "last_name": "Doe",
+  "role": "analyst",
+  "status": "active"
+}
+```
+
+### User Visibility Levels
+| Visibility | Default For | Who Can View |
+|------------|-------------|--------------|
+| `global` | System users | All authenticated users |
+| `public` | Public profiles | Anyone with `users.read_public` |
+| `org` | **New users (default)** | Members of the same organization |
+| `private` | Sensitive accounts | Only self and admins |
+
+### User Permissions Matrix
+
+| Permission | Admin | Analyst | Viewer |
+|------------|:-----:|:-------:|:------:|
+| `users.read_all` | ✅ | ❌ | ❌ |
+| `users.read_metadata` | ✅ | ✅ | ❌ |
+| `users.read_own_org` | ✅ | ✅ | ✅ |
+| `users.read_public` | ✅ | ✅ | ✅ |
+| `users.read_audit` | ✅ | ❌ | ❌ |
+| `users.manage` | ✅ | ❌ | ❌ |
+
+### API Endpoints for Viewing Users
+
+| Endpoint | Method | Description | Access |
+|----------|--------|-------------|--------|
+| `/users/` | GET | List all visible users | All (filtered by role) |
+| `/users/me` | GET | Get own profile (full) | Self |
+| `/users/{id}` | GET | Get user by ID | Based on visibility |
+| `/users/{id}/activity` | GET | User's action history | Self, Admin |
+| `/users/{id}/audit` | GET | Who viewed this user | Admin only |
+| `/users/{id}/permissions` | GET | User's role permissions | Self, Admin |
+
+### Field Visibility by Access Level
+
+| Access Level | Fields Shown | PII Handling |
+|--------------|--------------|--------------|
+| **full** | All fields | Unmasked |
+| **metadata** | Public + login info, risk score | Partially masked |
+| **public** | ID, name, role, status | No PII |
+| **redacted** | ID, first name, role only | Fully masked |
+
+---
+
 ## Compliance & Security
 
 - **PCI-DSS**: Immutable audit logging, encrypted secrets management
@@ -255,6 +403,7 @@ rules:
 - **GDPR**: Data retention policies, user data export capabilities
 - **SOC 2**: Comprehensive audit trails, monitoring, and alerting
 - **HIPAA-Ready**: Encrypted data at rest and in transit
+- **User Access Auditing**: All profile access logged for compliance
 
 ---
 
@@ -266,6 +415,7 @@ rules:
 - Authentication success/failure rates
 - Risk event volumes
 - Database query performance
+- User profile access counts
 
 ### View Metrics
 ```bash
@@ -281,6 +431,7 @@ Logs are aggregated in Loki and queryable via Grafana. Key log types:
 - Application logs (request/response)
 - Risk decisions (fraud alerts)
 - Audit logs (user actions)
+- **User access logs** (profile views)
 - System events (startup/shutdown)
 
 ---
@@ -290,6 +441,9 @@ Logs are aggregated in Loki and queryable via Grafana. Key log types:
 ```bash
 # Run unit tests
 docker compose run --rm api pytest tests/
+
+# Run system user tests
+docker compose run --rm api pytest tests/test_system_user.py -v
 
 # View API documentation
 http://localhost:8000/docs
@@ -321,6 +475,7 @@ docker compose exec redis redis-cli XREAD COUNT 10 STREAMS events 0
 - Enable WAF (Web Application Firewall) rules
 - Implement rate limiting per API client
 - Monitor for suspicious patterns in logs
+- **Review user access audit logs regularly**
 
 ---
 
@@ -350,6 +505,9 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Roadmap
 
+- [x] System user with global visibility
+- [x] User access audit logging
+- [x] Role-based field visibility
 - [ ] Machine learning model integration for behavioral anomaly detection
 - [ ] Advanced analytics dashboard with drill-down capabilities
 - [ ] GraphQL API support
