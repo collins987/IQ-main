@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: #10b981;
+            color: white;
+            padding: 20px;
+            border-radius: 8px 8px 0 0;
+            text-align: center;
+        }
+        .content {
+            background: #f9fafb;
+            padding: 30px;
+            border-radius: 0 0 8px 8px;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #10b981;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .info {
+            background: #dbeafe;
+            border-left: 4px solid #3b82f6;
+            padding: 12px 16px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .footer {
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Welcome to SentinelIQ</h1>
+        </div>
+        
+        <div class="content">
+            <h2>Hello {{ first_name }},</h2>
+            
+            <p>Thank you for creating a SentinelIQ account. We're excited to have you on board!</p>
+            
+            <p>To get started, please verify your email address by clicking the button below:</p>
+            
+            <div style="text-align: center;">
+                <a href="{{ verification_url }}" class="button">Verify Email Address</a>
+            </div>
+            
+            <div class="info">
+                <strong>📧 Verification Link:</strong> This link expires in 24 hours. 
+                Please verify your email address to unlock full access to SentinelIQ.
+            </div>
+            
+            <p>Once verified, you'll be able to:</p>
+            <ul>
+                <li>Login to your account</li>
+                <li>Access all features</li>
+                <li>Manage your security settings</li>
+            </ul>
+            
+            <p style="color: #666; font-size: 14px; word-break: break-all;">
+                Or copy this link: <a href="{{ verification_url }}">{{ verification_url }}</a>
+            </p>
+            
+            <div class="footer">
+                <p>© 2025 SentinelIQ. All rights reserved.</p>
+                <p>This is an automated message, please do not reply to this email.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,370 @@
+# SentinelIQ Fraud Detection Rules
+# Event-driven risk scoring with Hard Rules, Velocity Checks, and Behavioral Analysis
+
+rules:
+  
+  # ============================================================================
+  # HARD RULES (Gatekeepers) - Block immediately, no score negotiation
+  # ============================================================================
+  
+  hard_rules:
+    
+    - id: "sanctioned_region"
+      name: "Sanctioned Region Access"
+      category: "hard_rule"
+      enabled: true
+      description: "Block access from OFAC/sanctioned countries"
+      risk_score: 1.0  # Automatic block
+      action: "block"
+      
+      conditions:
+        country_code:
+          in: ["KP", "IR", "SY", "CU"]  # North Korea, Iran, Syria, Cuba
+      
+      metadata:
+        severity: "critical"
+        compliance: "OFAC"
+    
+    
+    - id: "credential_stuffing"
+      name: "Credential Stuffing Attack"
+      category: "hard_rule"
+      enabled: true
+      description: "Detect brute force / credential stuffing patterns"
+      risk_score: 0.95
+      action: "challenge"
+      
+      conditions:
+        event_type: "authentication.failed"
+        failed_attempts_5min: { gt: 5 }
+      
+      metadata:
+        severity: "critical"
+        rate_limit: 5
+    
+    
+    - id: "known_malware_ip"
+      name: "Known Malware IP Address"
+      category: "hard_rule"
+      enabled: true
+      description: "Block from known C2 or malware distribution servers"
+      risk_score: 0.98
+      action: "block"
+      
+      conditions:
+        ip_address:
+          in: []  # Populated from threat intel feeds in production
+      
+      metadata:
+        severity: "critical"
+        threat_intel_source: "abuseipdb"
+    
+    
+    - id: "vpn_proxy_detected"
+      name: "VPN/Proxy Usage (High-Risk Context)"
+      category: "hard_rule"
+      enabled: false  # Set to true if high-risk for your use case
+      description: "Block VPN in certain contexts (e.g., financial transactions)"
+      risk_score: 0.85
+      action: "challenge"
+      
+      conditions:
+        is_vpn: true
+        event_type: "transaction.attempted"
+        amount: { gt: 10000 }
+      
+      metadata:
+        severity: "high"
+  
+  
+  # ============================================================================
+  # VELOCITY CHECKS (The "Superman" Rule) - Detect physically impossible travel
+  # ============================================================================
+  
+  velocity_checks:
+    
+    - id: "impossible_travel"
+      name: "Impossible Travel Velocity"
+      category: "velocity"
+      enabled: true
+      description: "User logins from geographically impossible locations within short time"
+      risk_score: 0.90
+      action: "challenge"
+      
+      conditions:
+        # If user logged in from London and then New York within 6 hours:
+        # Distance: ~3,500 miles
+        # Commercial flight: ~7-8 hours + airport time
+        # Physically impossible by ground/sea
+        
+        distance_miles: { gt: 3000 }
+        time_window_hours: { lt: 6 }
+      
+      metadata:
+        severity: "high"
+        calculation: "haversine_distance"
+        max_human_speed_mph: 500  # Airplane at cruising speed
+    
+    
+    - id: "rapid_transactions"
+      name: "Rapid Transaction Velocity"
+      category: "velocity"
+      enabled: true
+      description: "Unusually high transaction frequency"
+      risk_score: 0.70
+      action: "review"
+      
+      conditions:
+        event_type: "transaction.attempted"
+        transactions_per_hour: { gt: 20 }
+        transactions_per_day: { gt: 100 }
+      
+      metadata:
+        severity: "medium"
+    
+    
+    - id: "multi_device_login"
+      name: "Simultaneous Multi-Device Login"
+      category: "velocity"
+      enabled: true
+      description: "Concurrent logins from different devices within seconds"
+      risk_score: 0.75
+      action: "challenge"
+      
+      conditions:
+        event_type: "authentication.login"
+        unique_devices_5min: { gt: 3 }
+        time_window_seconds: { lt: 60 }
+      
+      metadata:
+        severity: "high"
+  
+  
+  # ============================================================================
+  # BEHAVIORAL RULES (Anomaly Detection) - Based on user history & patterns
+  # ============================================================================
+  
+  behavioral_rules:
+    
+    - id: "unusual_transaction_amount"
+      name: "Unusual Transaction Amount"
+      category: "behavioral"
+      enabled: true
+      description: "Transaction amount significantly exceeds user's typical behavior"
+      risk_score: 0.65
+      action: "review"
+      
+      conditions:
+        event_type: "transaction.attempted"
+        amount_percentile: { gt: 300 }  # 3x average transaction
+      
+      thresholds:
+        low: 150    # 1.5x = low risk
+        medium: 250 # 2.5x = medium risk
+        high: 400   # 4x = high risk
+      
+      metadata:
+        severity: "medium"
+        lookback_period_days: 90
+    
+    
+    - id: "new_recipient"
+      name: "Transaction to New Recipient"
+      category: "behavioral"
+      enabled: true
+      description: "First transaction to a previously unseen recipient"
+      risk_score: 0.45
+      action: "review"
+      
+      conditions:
+        event_type: "transaction.attempted"
+        recipient_is_new: true
+      
+      metadata:
+        severity: "low"
+        combine_with:
+          - "unusual_transaction_amount"  # Higher score if combining rules
+    
+    
+    - id: "unusual_login_time"
+      name: "Login at Unusual Time"
+      category: "behavioral"
+      enabled: true
+      description: "Login outside user's typical active hours"
+      risk_score: 0.35
+      action: "monitor"
+      
+      conditions:
+        event_type: "authentication.login"
+        hour_of_day: { not_in: [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18] }
+      
+      metadata:
+        severity: "low"
+        lookback_period_days: 30
+    
+    
+    - id: "new_device"
+      name: "Login from New Device"
+      category: "behavioral"
+      enabled: true
+      description: "First login from a new device"
+      risk_score: 0.40
+      action: "review"
+      
+      conditions:
+        event_type: "authentication.login"
+        device_is_new: true
+      
+      metadata:
+        severity: "low"
+        require_additional_verification: true
+        mfa_required: true
+    
+    
+    - id: "unusual_data_access"
+      name: "Unusual Data Access Pattern"
+      category: "behavioral"
+      enabled: true
+      description: "Accessing significantly more data than typical"
+      risk_score: 0.55
+      action: "monitor"
+      
+      conditions:
+        event_type: "data_access.read"
+        access_volume_percentile: { gt: 250 }
+        time_window_minutes: 60
+      
+      metadata:
+        severity: "medium"
+        potential_indicator: "data_exfiltration"
+    
+    
+    - id: "low_security_authentication"
+      name: "Low-Security Authentication Method"
+      category: "behavioral"
+      enabled: true
+      description: "Login without MFA in high-risk context"
+      risk_score: 0.30
+      action: "monitor"
+      
+      conditions:
+        event_type: "authentication.login"
+        mfa_used: false
+        user_role: ["analyst", "admin"]  # For elevated users only
+      
+      metadata:
+        severity: "low"
+        recommendation: "enable_mfa"
+  
+  
+  # ============================================================================
+  # RULE COMBINATIONS (Meta-rules) - Boost scores when multiple rules trigger
+  # ============================================================================
+  
+  rule_combinations:
+    
+    - id: "account_takeover_pattern"
+      name: "Account Takeover Pattern"
+      description: "Multiple rules indicating ATO (impossible travel + new device + unusual activity)"
+      base_score: 0.85
+      
+      triggered_rules:
+        - "impossible_travel"
+        - "new_device"
+        - "unusual_transaction_amount"
+      
+      action: "block"
+      metadata:
+        severity: "critical"
+    
+    
+    - id: "credential_compromise"
+      name: "Credential Compromise Indicators"
+      description: "Failed attempts followed by successful login from new location/device"
+      base_score: 0.80
+      
+      triggered_rules:
+        - "credential_stuffing"
+        - "impossible_travel"
+        - "new_device"
+      
+      action: "challenge"
+      metadata:
+        severity: "critical"
+    
+    
+    - id: "data_exfiltration_attempt"
+      name: "Data Exfiltration Attempt"
+      description: "Unusual data access + rapid downloads + new location"
+      base_score: 0.75
+      
+      triggered_rules:
+        - "unusual_data_access"
+        - "impossible_travel"
+        - "new_device"
+      
+      action: "block"
+      metadata:
+        severity: "critical"
+
+
+# ============================================================================
+# SCORING THRESHOLDS
+# ============================================================================
+
+scoring:
+  
+  thresholds:
+    allow: 0.0      # Risk score < 0.30 = allow
+    review: 0.30    # 0.30 - 0.60 = manual review
+    challenge: 0.60 # 0.60 - 0.80 = challenge (MFA, verification)
+    block: 0.80     # >= 0.80 = block
+  
+  # Score calculation method
+  method: "weighted_sum"
+  
+  # Rule weights (how much each rule category contributes)
+  weights:
+    hard_rule: 0.50
+    velocity: 0.30
+    behavioral: 0.20
+  
+  # Maximum score (capped at 1.0)
+  max_score: 1.0
+
+
+# ============================================================================
+# MONITORING & ALERTS
+# ============================================================================
+
+monitoring:
+  
+  # Metrics to track
+  metrics:
+    - "total_events_processed"
+    - "risk_score_distribution"
+    - "alerts_generated"
+    - "false_positive_rate"
+    - "blocked_transactions"
+  
+  # Alert thresholds
+  alerts:
+    - name: "High Block Rate"
+      condition: "blocked_transactions > 1000 in 1h"
+      severity: "warning"
+    
+    - name: "Service Latency"
+      condition: "decision_latency_p95 > 200ms"
+      severity: "warning"
+    
+    - name: "Queue Backlog"
+      condition: "pending_events > 10000"
+      severity: "critical"
+  
+  # Dashboard panels
+  dashboards:
+    - "Real-time Risk Heatmap"
+    - "Block/Challenge Rate by Country"
+    - "Rule Trigger Frequency"
+    - "False Positive Trend"
+    - "API Latency Histogram"

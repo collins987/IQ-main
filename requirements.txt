@@ -1,0 +1,40 @@
+fastapi==0.110.0
+uvicorn==0.29.0
+sqlalchemy==2.0.29
+psycopg2-binary==2.9.9
+python-jose==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==3.2.2
+redis==5.0.3
+prometheus-client==0.20.0
+prometheus-fastapi-instrumentator==6.1.0
+pydantic[email]==2.6.4
+jinja2==3.1.2
+
+# ============================================================================
+# MILESTONE 1 & 2: Event-Driven Risk Engine
+# ============================================================================
+
+# YAML rule configuration
+PyYAML==6.0.1
+
+# Structured JSON logging
+python-json-logger==2.0.7
+
+# S3 / MinIO object storage for immutable logs
+minio==7.2.0
+
+# Email validation
+email-validator==2.1.0
+
+# Date/time utilities
+python-dateutil==2.8.2
+
+# HTTP client for Vault, Loki, etc.
+requests==2.31.0
+
+# Environment variable validation
+python-dotenv==1.0.0
+
+# Device fingerprinting
+user-agents==2.2.0
