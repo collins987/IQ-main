@@ -7,8 +7,8 @@ from datetime import datetime
 from sqlalchemy import Column, String, Float, Boolean, DateTime, JSON, Integer, ForeignKey, Text, Index
 from sqlalchemy.orm import relationship
 
-# Import shared Base from models package to ensure single metadata
-from app.models import Base
+# Import Base from dedicated base module to avoid circular imports
+from app.models.base import Base
 
 
 class EventOutbox(Base):

@@ -4,16 +4,12 @@ This module exports all database models for the application.
 """
 
 from sqlalchemy import Column, String, Integer, Boolean, ForeignKey, DateTime, JSON, Text, Enum as SQLEnum
-from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.orm import relationship
 from datetime import datetime
 from enum import Enum
-import uuid
 
-Base = declarative_base()
-
-
-def generate_uuid():
-    return str(uuid.uuid4())
+# Import Base from dedicated module to ensure single instance across all models
+from app.models.base import Base, generate_uuid
 
 
 class UserStatus(str, Enum):

@@ -257,12 +257,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             logger.info("Rate limiter using Redis backend")
         except redis.ConnectionError as e:
             logger.warning(f"Redis not available for rate limiter, using in-memory fallback: {e}")
+            self.use_redis = False
         except Exception as e:
             logger.warning(f"Redis initialization failed, using in-memory rate limiter: {e}")
-        except Exception as e:
-            logger.warning(f"Redis not available, using in-memory rate limiter: {e}")
             self.use_redis = False
-            self.buckets: Dict[str, TokenBucket] = {}
     
     def _get_identifier(self, request: Request) -> str:
         """

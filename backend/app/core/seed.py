@@ -79,7 +79,7 @@ def seed_system_user(db: Session) -> User:
             is_system_user=True,
             is_active=True,
             email_verified=True,
-            metadata={
+            user_metadata={
                 "description": "System user for platform operations",
                 "purpose": "Audit trail, system actions, compliance",
                 "created_by": "system_seed",
@@ -137,7 +137,7 @@ def seed_default_admin(db: Session) -> User:
             is_system_user=False,
             is_active=True,
             email_verified=True,
-            metadata={
+            user_metadata={
                 "description": "Default admin user",
                 "created_by": "system_seed",
                 "note": "Change password immediately!"
