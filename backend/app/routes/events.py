@@ -5,14 +5,12 @@ Implements the transactional outbox pattern for guaranteed event delivery.
 
 import logging
 from datetime import datetime
-from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.schemas.event import SentinelEvent
-from app.models import User
-from app.dependencies import get_current_user, get_db
+from app.dependencies import get_db
 from app.models.events import EventOutbox
 from app.services.redis_stream import get_redis_stream_manager
 import json
@@ -26,8 +24,7 @@ router = APIRouter(prefix="/api/v1/events", tags=["events"])
 async def ingest_event(
     event: SentinelEvent,
     request: Request,
-    db: Session = Depends(get_db),
-    current_user: Optional[User] = None
+    db: Session = Depends(get_db)
 ) -> dict:
     """
     Ingest an event into SentinelIQ.
@@ -101,8 +98,7 @@ async def ingest_event(
 async def ingest_auth_event(
     event_data: dict,
     request: Request,
-    db: Session = Depends(get_db),
-    current_user: Optional[User] = None
+    db: Session = Depends(get_db)
 ) -> dict:
     """Convenience endpoint for authentication events."""
     
@@ -127,7 +123,7 @@ async def ingest_auth_event(
         )
         
         # Use main ingestion
-        return await ingest_event(event, request, db, current_user)
+        return await ingest_event(event, request, db)
         
     except Exception as e:
         logger.error(f"Error ingesting auth event: {e}")
@@ -141,8 +137,7 @@ async def ingest_auth_event(
 async def ingest_transaction_event(
     event_data: dict,
     request: Request,
-    db: Session = Depends(get_db),
-    current_user: Optional[User] = None
+    db: Session = Depends(get_db)
 ) -> dict:
     """Convenience endpoint for transaction events."""
     
@@ -165,7 +160,7 @@ async def ingest_transaction_event(
             payload=event_data.get("payload", {})
         )
         
-        return await ingest_event(event, request, db, current_user)
+        return await ingest_event(event, request, db)
         
     except Exception as e:
         logger.error(f"Error ingesting transaction event: {e}")

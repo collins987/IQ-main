@@ -10,7 +10,7 @@ Marks user as email_verified=True.
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.database import get_db
+from app.dependencies import get_db
 from app.models import User, AuditLog
 from app.services.token_service import verify_email_token
 from datetime import datetime

@@ -7,7 +7,7 @@ import json
 import logging
 from typing import Optional, Dict, Any, List
 from redis import Redis
-from redis.exceptions import ResponseError
+from redis.exceptions import ResponseError, ConnectionError as RedisConnectionError
 from app.config import REDIS_URL
 
 logger = logging.getLogger("sentineliq.redis_streams")
@@ -17,7 +17,9 @@ class RedisStreamManager:
     """Manages Redis Stream operations for event ingestion and processing."""
     
     def __init__(self, redis_url: str = REDIS_URL):
-        self.redis = Redis.from_url(redis_url, decode_responses=True)
+        self._redis_url = redis_url
+        self._redis: Optional[Redis] = None
+        self._connected = False
         
         # Stream names
         self.event_stream = "sentineliq:events"
@@ -28,8 +30,36 @@ class RedisStreamManager:
         self.event_consumer_group = "risk-engine"
         self.alert_consumer_group = "alerting"
         
+        # Try to connect
+        self._connect()
+    
+    def _connect(self):
+        """Establish Redis connection with error handling."""
+        try:
+            self._redis = Redis.from_url(self._redis_url, decode_responses=True)
+            self._redis.ping()
+            self._connected = True
+            logger.info(f"Connected to Redis at {self._redis_url}")
+        except RedisConnectionError as e:
+            logger.warning(f"Redis connection failed: {e}. Operating in degraded mode.")
+            self._connected = False
+        except Exception as e:
+            logger.warning(f"Redis initialization error: {e}. Operating in degraded mode.")
+            self._connected = False
+    
+    @property
+    def redis(self) -> Optional[Redis]:
+        """Get Redis client, reconnecting if necessary."""
+        if not self._connected:
+            self._connect()
+        return self._redis if self._connected else None
+        
     def ensure_consumer_groups(self):
         """Create consumer groups if they don't exist."""
+        if not self.redis:
+            logger.warning("Redis not available, skipping consumer group creation")
+            return
+            
         try:
             self.redis.xgroup_create(
                 self.event_stream,
@@ -54,11 +84,15 @@ class RedisStreamManager:
             if "BUSYGROUP" not in str(e):
                 logger.error(f"Error creating alert consumer group: {e}")
     
-    def add_event(self, event_data: Dict[str, Any], stream: str = None) -> str:
+    def add_event(self, event_data: Dict[str, Any], stream: str = None) -> Optional[str]:
         """
         Add an event to a Redis Stream.
-        Returns the stream ID (e.g., "1526919030474-0").
+        Returns the stream ID (e.g., "1526919030474-0") or None if Redis unavailable.
         """
+        if not self.redis:
+            logger.warning("Redis not available, event not added to stream")
+            return None
+            
         stream = stream or self.event_stream
         
         try:
@@ -71,7 +105,7 @@ class RedisStreamManager:
             return event_id
         except Exception as e:
             logger.error(f"Error adding event to stream: {e}")
-            raise
+            return None
     
     def read_events(
         self,
@@ -84,6 +118,9 @@ class RedisStreamManager:
         Read events from a stream as a consumer group.
         Returns list of (event_id, event_data) tuples.
         """
+        if not self.redis:
+            return []
+            
         stream = stream or self.event_stream
         group = self.event_consumer_group if stream == self.event_stream else self.alert_consumer_group
         
@@ -110,6 +147,9 @@ class RedisStreamManager:
     
     def ack_event(self, event_id: str, stream: str = None, group: str = None):
         """Acknowledge that an event was processed."""
+        if not self.redis:
+            return
+            
         stream = stream or self.event_stream
         group = group or self.event_consumer_group
         
@@ -121,6 +161,9 @@ class RedisStreamManager:
     
     def nack_event(self, event_id: str, stream: str = None):
         """Return an event to the stream (nack)."""
+        if not self.redis:
+            return
+            
         # Redis Streams doesn't have native nack, so we delete from pending and re-add
         stream = stream or self.event_stream
         try:
@@ -131,6 +174,9 @@ class RedisStreamManager:
     
     def get_pending_events(self, stream: str = None, group: str = None):
         """Get list of pending (unacked) events."""
+        if not self.redis:
+            return {}
+            
         stream = stream or self.event_stream
         group = group or self.event_consumer_group
         
@@ -143,6 +189,9 @@ class RedisStreamManager:
     
     def get_consumer_info(self, stream: str = None, group: str = None):
         """Get consumer group info for monitoring."""
+        if not self.redis:
+            return []
+            
         stream = stream or self.event_stream
         group = group or self.event_consumer_group
         
@@ -158,15 +207,19 @@ class RedisStreamManager:
         Set a velocity counter with automatic expiry.
         Used for login attempts, transaction counts, etc.
         """
+        if not self.redis:
+            return 0
         try:
             self.redis.set(key, value, ex=expiry_seconds)
             return value
         except Exception as e:
             logger.error(f"Error setting velocity counter: {e}")
-            raise
+            return 0
     
     def increment_velocity_counter(self, key: str, expiry_seconds: int = 3600) -> int:
         """Increment a velocity counter (for rate limiting checks)."""
+        if not self.redis:
+            return 0
         try:
             if not self.redis.exists(key):
                 self.redis.set(key, 0, ex=expiry_seconds)
@@ -174,10 +227,12 @@ class RedisStreamManager:
             return value
         except Exception as e:
             logger.error(f"Error incrementing velocity counter: {e}")
-            raise
+            return 0
     
     def get_velocity_counter(self, key: str) -> Optional[int]:
         """Get current velocity counter value."""
+        if not self.redis:
+            return 0
         try:
             value = self.redis.get(key)
             return int(value) if value else 0
@@ -187,6 +242,8 @@ class RedisStreamManager:
     
     def cache_user_location(self, user_id: str, lat: float, lon: float, expiry_seconds: int = 86400):
         """Cache user's last known location for velocity checks."""
+        if not self.redis:
+            return
         try:
             key = f"user:{user_id}:location"
             self.redis.set(key, json.dumps({"lat": lat, "lon": lon}), ex=expiry_seconds)
@@ -195,6 +252,8 @@ class RedisStreamManager:
     
     def get_user_location(self, user_id: str) -> Optional[Dict]:
         """Get user's last known location."""
+        if not self.redis:
+            return None
         try:
             key = f"user:{user_id}:location"
             data = self.redis.get(key)
@@ -205,6 +264,8 @@ class RedisStreamManager:
     
     def cache_device_fingerprint(self, user_id: str, fingerprint_hash: str, expiry_seconds: int = 2592000):  # 30 days
         """Cache user's known device fingerprints."""
+        if not self.redis:
+            return
         try:
             key = f"user:{user_id}:devices"
             self.redis.sadd(key, fingerprint_hash)
@@ -214,6 +275,8 @@ class RedisStreamManager:
     
     def get_known_devices(self, user_id: str) -> set:
         """Get user's known device fingerprints."""
+        if not self.redis:
+            return set()
         try:
             key = f"user:{user_id}:devices"
             return self.redis.smembers(key)
@@ -223,6 +286,8 @@ class RedisStreamManager:
     
     def is_known_device(self, user_id: str, fingerprint_hash: str) -> bool:
         """Check if device is in user's known devices."""
+        if not self.redis:
+            return False
         try:
             key = f"user:{user_id}:devices"
             return self.redis.sismember(key, fingerprint_hash)
@@ -232,10 +297,13 @@ class RedisStreamManager:
     
     def health_check(self) -> bool:
         """Check Redis connectivity."""
+        if not self._connected or not self._redis:
+            return False
         try:
-            return self.redis.ping()
+            return self._redis.ping()
         except Exception as e:
             logger.error(f"Redis health check failed: {e}")
+            self._connected = False
             return False
 
 

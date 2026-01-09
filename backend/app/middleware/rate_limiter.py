@@ -228,6 +228,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     - Per-endpoint custom limits
     - Burst traffic handling
     - Proper 429 responses with Retry-After header
+    - Graceful degradation if Redis unavailable
     
     Usage:
         app.add_middleware(RateLimitMiddleware)
@@ -242,12 +243,22 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.config = config or RateLimitConfig()
         
-        # Initialize Redis connection
+        # Initialize Redis connection with graceful degradation
+        self.use_redis = False
+        self.redis = None
+        self.bucket = None
+        self.buckets: Dict[str, TokenBucket] = {}
+        
         try:
             self.redis = redis.Redis.from_url(redis_url, decode_responses=True)
+            self.redis.ping()  # Test connection
             self.bucket = RedisTokenBucket(self.redis)
             self.use_redis = True
             logger.info("Rate limiter using Redis backend")
+        except redis.ConnectionError as e:
+            logger.warning(f"Redis not available for rate limiter, using in-memory fallback: {e}")
+        except Exception as e:
+            logger.warning(f"Redis initialization failed, using in-memory rate limiter: {e}")
         except Exception as e:
             logger.warning(f"Redis not available, using in-memory rate limiter: {e}")
             self.use_redis = False

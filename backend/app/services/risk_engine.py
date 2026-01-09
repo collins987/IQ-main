@@ -18,7 +18,7 @@ from app.models.events import (
     DeviceFingerprint, VelocityCounter
 )
 from app.services.redis_stream import get_redis_stream_manager
-from app.core.db import db_session
+from app.core.db import db_session, SessionLocal
 import yaml
 
 logger = logging.getLogger("sentineliq.risk_engine")

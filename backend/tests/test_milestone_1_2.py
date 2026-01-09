@@ -13,7 +13,7 @@ from app.schemas.event import SentinelEvent, ActorContext, GeoContext, EventType
 from app.services.risk_engine import RiskEngine
 from app.services.redis_stream import RedisStreamManager
 from app.models.events import EventOutbox, RiskDecision, CryptoAuditLog
-from app.core.db import db_session
+from app.core.db import db_session, SessionLocal
 
 
 @pytest.fixture

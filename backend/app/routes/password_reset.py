@@ -14,7 +14,7 @@ from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 from datetime import datetime
 
-from app.database import get_db
+from app.dependencies import get_db
 from app.models import User, AuditLog, RefreshToken
 from app.services.token_service import generate_email_token, verify_email_token
 from app.services.email_service import send_email

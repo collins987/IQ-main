@@ -6,10 +6,9 @@ Implements transactional outbox for guaranteed event delivery and crypto-chained
 from datetime import datetime
 from sqlalchemy import Column, String, Float, Boolean, DateTime, JSON, Integer, ForeignKey, Text, Index
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm import declarative_base
 
-# Use a shared Base - will be unified with models/__init__.py Base in production
-Base = declarative_base()
+# Import shared Base from models package to ensure single metadata
+from app.models import Base
 
 
 class EventOutbox(Base):

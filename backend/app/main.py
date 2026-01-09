@@ -1,6 +1,10 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Response, Request
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from sqlalchemy import text
 from app.api import auth
 from app.routes import users, admin, email_verification, password_reset, analytics, events
 from app.middleware.security_headers import SecurityHeadersMiddleware
@@ -15,7 +19,7 @@ from app.core.seed import seed_default_org
 from app.core.logging import logger
 from app.services.graph_service import router as graph_router
 from app.services.message_center import router as message_router
-import time
+import traceback
 
 
 # Lifespan context manager for startup/shutdown
@@ -29,14 +33,18 @@ async def lifespan(app: FastAPI):
     - Kafka connections (optional)
     - Vault client (optional)
     """
-    # Startup
-    Base.metadata.create_all(bind=engine)
-    db = SessionLocal()
+    # Startup - Database (required)
     try:
-        seed_default_org(db)
-        logger.info("Application startup - database initialized")
-    finally:
-        db.close()
+        Base.metadata.create_all(bind=engine)
+        db = SessionLocal()
+        try:
+            seed_default_org(db)
+            logger.info("Application startup - database initialized")
+        finally:
+            db.close()
+    except Exception as e:
+        logger.error(f"Database initialization failed: {e}")
+        raise RuntimeError(f"Cannot start without database: {e}")
     
     # Initialize Kafka (optional - graceful degradation)
     try:
@@ -54,6 +62,15 @@ async def lifespan(app: FastAPI):
             logger.info("Vault client authenticated")
     except Exception as e:
         logger.warning(f"Vault initialization skipped: {e}")
+    
+    # Initialize Redis Stream Manager (optional - graceful degradation)
+    try:
+        from app.services.redis_stream import get_redis_stream_manager
+        redis_manager = get_redis_stream_manager()
+        if redis_manager.health_check():
+            logger.info("Redis stream manager initialized")
+    except Exception as e:
+        logger.warning(f"Redis initialization skipped: {e}")
     
     yield
     
@@ -121,6 +138,70 @@ app.include_router(message_router)  # Secure message center
 init_db()
 
 
+# ============================================================================
+# Global Exception Handlers
+# ============================================================================
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    """Handle HTTP exceptions with structured response."""
+    logger.warning(
+        f"HTTP {exc.status_code}: {exc.detail}",
+        extra={"path": request.url.path, "method": request.method}
+    )
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": True,
+            "detail": exc.detail,
+            "status_code": exc.status_code
+        }
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Handle validation errors with detailed response."""
+    logger.warning(
+        f"Validation error on {request.url.path}",
+        extra={"errors": exc.errors()}
+    )
+    return JSONResponse(
+        status_code=422,
+        content={
+            "error": True,
+            "detail": "Validation error",
+            "errors": exc.errors()
+        }
+    )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """
+    Catch-all exception handler.
+    Prevents crashes from unhandled exceptions.
+    """
+    error_id = f"ERR-{id(exc)}"
+    logger.error(
+        f"Unhandled exception [{error_id}]: {type(exc).__name__}: {exc}",
+        extra={
+            "path": request.url.path,
+            "method": request.method,
+            "error_id": error_id,
+            "traceback": traceback.format_exc()
+        }
+    )
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": True,
+            "detail": "Internal server error",
+            "error_id": error_id
+        }
+    )
+
+
 @app.get("/health")
 def health_check():
     """Health check endpoint for load balancers."""
@@ -134,7 +215,7 @@ async def detailed_health_check():
     
     Checks database, Redis, Kafka, and Vault connectivity.
     """
-    status = {
+    health_status = {
         "status": "ok",
         "version": "2.0.0",
         "components": {}
@@ -143,46 +224,48 @@ async def detailed_health_check():
     # Database check
     try:
         db = SessionLocal()
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         db.close()
-        status["components"]["database"] = "healthy"
+        health_status["components"]["database"] = "healthy"
     except Exception as e:
-        status["components"]["database"] = f"unhealthy: {str(e)}"
-        status["status"] = "degraded"
+        health_status["components"]["database"] = f"unhealthy: {str(e)}"
+        health_status["status"] = "degraded"
     
     # Redis check
     try:
-        import redis
-        from app.config import settings
-        r = redis.Redis.from_url(settings.redis_url)
-        r.ping()
-        status["components"]["redis"] = "healthy"
+        from app.services.redis_stream import get_redis_stream_manager
+        redis_manager = get_redis_stream_manager()
+        if redis_manager.health_check():
+            health_status["components"]["redis"] = "healthy"
+        else:
+            health_status["components"]["redis"] = "unhealthy: ping failed"
+            health_status["status"] = "degraded"
     except Exception as e:
-        status["components"]["redis"] = f"unhealthy: {str(e)}"
-        status["status"] = "degraded"
+        health_status["components"]["redis"] = f"unhealthy: {str(e)}"
+        health_status["status"] = "degraded"
     
     # Kafka check (optional)
     try:
         from app.services.kafka_service import _producer
         if _producer and _producer._started:
-            status["components"]["kafka"] = "healthy"
+            health_status["components"]["kafka"] = "healthy"
         else:
-            status["components"]["kafka"] = "not_configured"
+            health_status["components"]["kafka"] = "not_configured"
     except Exception:
-        status["components"]["kafka"] = "not_configured"
+        health_status["components"]["kafka"] = "not_configured"
     
     # Vault check (optional)
     try:
         from app.core.vault_client import get_vault_client
         vault = get_vault_client()
         if vault.is_authenticated():
-            status["components"]["vault"] = "healthy"
+            health_status["components"]["vault"] = "healthy"
         else:
-            status["components"]["vault"] = "not_authenticated"
+            health_status["components"]["vault"] = "not_authenticated"
     except Exception:
-        status["components"]["vault"] = "not_configured"
+        health_status["components"]["vault"] = "not_configured"
     
-    return status
+    return health_status
 
 
 @app.get("/metrics", include_in_schema=False)
