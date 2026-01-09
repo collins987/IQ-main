@@ -8,13 +8,13 @@ from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session
 
 from app.schemas.event import SentinelEvent
 from app.models import User
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, get_db
 from app.models.events import EventOutbox
 from app.services.redis_stream import get_redis_stream_manager
-from app.core.db import db_session
 import json
 
 logger = logging.getLogger("sentineliq.gateway")
@@ -26,6 +26,7 @@ router = APIRouter(prefix="/api/v1/events", tags=["events"])
 async def ingest_event(
     event: SentinelEvent,
     request: Request,
+    db: Session = Depends(get_db),
     current_user: Optional[User] = None
 ) -> dict:
     """
@@ -75,8 +76,8 @@ async def ingest_event(
             is_processed=False
         )
         
-        db_session.add(outbox_entry)
-        db_session.commit()
+        db.add(outbox_entry)
+        db.commit()
         
         logger.info(f"Event ingested: {event.event_id} ({event.event_type}) - User: {event.actor.user_id}")
         
@@ -88,7 +89,7 @@ async def ingest_event(
         
     except Exception as e:
         logger.error(f"Error ingesting event: {e}")
-        db_session.rollback()
+        db.rollback()
         
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -100,6 +101,7 @@ async def ingest_event(
 async def ingest_auth_event(
     event_data: dict,
     request: Request,
+    db: Session = Depends(get_db),
     current_user: Optional[User] = None
 ) -> dict:
     """Convenience endpoint for authentication events."""
@@ -125,7 +127,7 @@ async def ingest_auth_event(
         )
         
         # Use main ingestion
-        return await ingest_event(event, request, current_user)
+        return await ingest_event(event, request, db, current_user)
         
     except Exception as e:
         logger.error(f"Error ingesting auth event: {e}")
@@ -139,6 +141,7 @@ async def ingest_auth_event(
 async def ingest_transaction_event(
     event_data: dict,
     request: Request,
+    db: Session = Depends(get_db),
     current_user: Optional[User] = None
 ) -> dict:
     """Convenience endpoint for transaction events."""
@@ -162,7 +165,7 @@ async def ingest_transaction_event(
             payload=event_data.get("payload", {})
         )
         
-        return await ingest_event(event, request, current_user)
+        return await ingest_event(event, request, db, current_user)
         
     except Exception as e:
         logger.error(f"Error ingesting transaction event: {e}")
