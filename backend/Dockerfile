@@ -12,6 +12,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the entire app folder
 COPY ./app ./app
 
+# Copy fraud detection rules configuration
+COPY ./rules ./rules
+
 # Expose port for FastAPI
 EXPOSE 8000
 
