@@ -1,3 +1,8 @@
+"""
+Core SQLAlchemy models for SentinelIQ.
+This module exports all database models for the application.
+"""
+
 from sqlalchemy import Column, String, Integer, Boolean, ForeignKey, DateTime, JSON
 from sqlalchemy.orm import declarative_base, relationship
 from datetime import datetime
@@ -5,8 +10,10 @@ import uuid
 
 Base = declarative_base()
 
+
 def generate_uuid():
     return str(uuid.uuid4())
+
 
 class Organization(Base):
     __tablename__ = "organizations"
@@ -14,6 +21,7 @@ class Organization(Base):
     name = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     users = relationship("User", back_populates="organization")
+
 
 class User(Base):
     __tablename__ = "users"
@@ -26,11 +34,12 @@ class User(Base):
     role = Column(String, default="viewer")  # admin, analyst, viewer
     risk_score = Column(Integer, default=0)
     is_active = Column(Boolean, default=True)
-    email_verified = Column(Boolean, default=False)  # NEW: Email verification status
+    email_verified = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
     
     organization = relationship("Organization", back_populates="users")
+
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"
@@ -41,6 +50,7 @@ class AuditLog(Base):
     event_metadata = Column(JSON, default={})
     timestamp = Column(DateTime, default=datetime.utcnow)
 
+
 class RefreshToken(Base):
     __tablename__ = "refresh_tokens"
     id = Column(String, primary_key=True, default=generate_uuid)
@@ -50,6 +60,7 @@ class RefreshToken(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     is_revoked = Column(Boolean, default=False)
 
+
 class LoginAttempt(Base):
     __tablename__ = "login_attempts"
     id = Column(String, primary_key=True, default=generate_uuid)
@@ -57,6 +68,7 @@ class LoginAttempt(Base):
     ip_address = Column(String, nullable=True)
     success = Column(Boolean, default=False)
     timestamp = Column(DateTime, default=datetime.utcnow)
+
 
 class EmailToken(Base):
     """
@@ -73,3 +85,16 @@ class EmailToken(Base):
     expires_at = Column(DateTime, nullable=False)
     is_used = Column(Boolean, default=False)  # Enforce single-use
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+# Re-export for convenience
+__all__ = [
+    "Base",
+    "generate_uuid",
+    "Organization",
+    "User",
+    "AuditLog",
+    "RefreshToken",
+    "LoginAttempt",
+    "EmailToken",
+]
