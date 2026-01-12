@@ -4,9 +4,13 @@ Database Seeding - Initialize required system data.
 Seeds:
 - Default organization
 - System user (globally visible)
-- Admin user (for initial access)
+- Admin user (for initial access - optional, credentials from env)
+
+NOTE: Primary admin authentication now uses environment-based virtual admin.
+      Database admin is seeded as fallback and for audit purposes.
 """
 
+import os
 import logging
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -20,14 +24,11 @@ logger = logging.getLogger("sentineliq.seed")
 SYSTEM_USER_ID = "00000000-0000-0000-0000-000000000001"
 SYSTEM_USER_EMAIL = "system@sentineliq.internal"
 
-# Default admin constants
-# ⚠️ IMPORTANT: These credentials are created on first run
-# EMAIL: admin@sentineliq.com
-# PASSWORD: SentinelIQ@2026
-# Change these immediately in production!
+# Default DB admin constants (fallback, primary auth uses env-based virtual admin)
+# Credentials loaded from environment for security
 DEFAULT_ADMIN_ID = "00000000-0000-0000-0000-000000000002"
-DEFAULT_ADMIN_EMAIL = "admin@sentineliq.com"
-DEFAULT_ADMIN_PASSWORD = "SentinelIQ@2026"
+DEFAULT_ADMIN_EMAIL = os.getenv("SEED_ADMIN_EMAIL", "dbadmin@sentineliq.local")
+DEFAULT_ADMIN_PASSWORD = os.getenv("SEED_ADMIN_PASSWORD", "DbAdmin@SentinelIQ#2025")
 
 
 def seed_default_org(db: Session) -> Organization:

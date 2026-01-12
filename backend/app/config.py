@@ -19,15 +19,35 @@ from typing import Dict, List, Optional
 SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey")
 ALGORITHM = "HS256"
 
-# MILESTONE 8: Logging Configuration
-LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
-# Map string to logging level
-LOG_LEVEL = getattr(logging, LOG_LEVEL.upper(), logging.INFO)
+# ============================================================================
+# Authentication Configuration
+# ============================================================================
+# Development mode flag - enables test user and debug features
+DEV_MODE = os.getenv("DEV_MODE", "false").lower() == "true"
+
+# Universal Admin Credentials (environment-based, NOT stored in database)
+# Used for bootstrap access and emergency recovery
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@sentineliq.local")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "Admin@SentinelIQ#2025")
+
+# Dummy Test User (only active when DEV_MODE=true)
+# Non-persistent, exists only in memory for testing
+TEST_USER_EMAIL = os.getenv("TEST_USER_EMAIL", "user@test.sentineliq.local")
+TEST_USER_PASSWORD = os.getenv("TEST_USER_PASSWORD", "UserTest@123")
+
+# ============================================================================
+# Token Configuration
+# ============================================================================
 ACCESS_TOKEN_EXPIRE_MINUTES = 30  # Short-lived access token
 REFRESH_TOKEN_EXPIRE_DAYS = 7  # Longer-lived refresh token
 MAX_SESSIONS_PER_USER = 3  # Limit concurrent sessions
 MAX_LOGIN_ATTEMPTS = 5  # Failed attempts before lockout
 LOGIN_ATTEMPT_WINDOW_MINUTES = 15  # Time window for rate limiting
+
+# MILESTONE 8: Logging Configuration
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+# Map string to logging level
+LOG_LEVEL = getattr(logging, LOG_LEVEL.upper(), logging.INFO)
 
 # MILESTONE 6: Identity Hardening
 EMAIL_TOKEN_EXPIRE_MINUTES = 24 * 60  # 24 hours (email verification)

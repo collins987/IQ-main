@@ -141,9 +141,9 @@ export default function Login() {
         {/* Demo credentials hint */}
         <div className="mt-6 p-4 rounded-lg bg-sentinel-500/10 border border-sentinel-500/30">
           <p className="text-sm text-sentinel-400 text-center">
-            <strong>Demo Credentials:</strong><br />
-            Email: admin@sentineliq.com<br />
-            Password: admin123
+            <strong>Admin Credentials:</strong><br />
+            Email: admin@sentineliq.local<br />
+            Password: Admin@SentinelIQ#2025
           </p>
         </div>
       </div>
