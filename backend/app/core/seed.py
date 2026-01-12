@@ -21,9 +21,13 @@ SYSTEM_USER_ID = "00000000-0000-0000-0000-000000000001"
 SYSTEM_USER_EMAIL = "system@sentineliq.internal"
 
 # Default admin constants
+# ⚠️ IMPORTANT: These credentials are created on first run
+# EMAIL: admin@sentineliq.com
+# PASSWORD: SentinelIQ@2026
+# Change these immediately in production!
 DEFAULT_ADMIN_ID = "00000000-0000-0000-0000-000000000002"
-DEFAULT_ADMIN_EMAIL = "admin@sentineliq.local"
-DEFAULT_ADMIN_PASSWORD = "AdminPassword123!"  # Change in production!
+DEFAULT_ADMIN_EMAIL = "admin@sentineliq.com"
+DEFAULT_ADMIN_PASSWORD = "SentinelIQ@2026"
 
 
 def seed_default_org(db: Session) -> Organization:
