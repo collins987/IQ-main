@@ -156,6 +156,17 @@ def seed_default_admin(db: Session) -> User:
             f"Default admin created: {DEFAULT_ADMIN_EMAIL} / {DEFAULT_ADMIN_PASSWORD} "
             "- CHANGE PASSWORD IMMEDIATELY!"
         )
+    else:
+        # Update existing admin to ensure correct credentials
+        admin_user.email = DEFAULT_ADMIN_EMAIL
+        admin_user.password_hash = hash_password(DEFAULT_ADMIN_PASSWORD)
+        admin_user.is_active = True
+        admin_user.email_verified = True
+        admin_user.role = "admin"
+        admin_user.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(admin_user)
+        logger.info(f"Default admin updated: {DEFAULT_ADMIN_EMAIL}")
     
     return admin_user
 
