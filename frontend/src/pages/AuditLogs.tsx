@@ -1,5 +1,6 @@
 import { useState, Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
+import { useAppSelector } from '../store/hooks';
 import { useGetAuditLogsQuery, useGetAuditActionTypesQuery, useExportAuditLogsMutation } from '../services/dashboardApi';
 import { formatDate } from '../utils/helpers';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -35,14 +36,15 @@ export default function AuditLogs() {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedLog, setSelectedLog] = useState<SelectedLog | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
   
   const { data: logs, isLoading, isFetching } = useGetAuditLogsQuery({
     page,
     page_size: 50,
     ...Object.fromEntries(Object.entries(filters).filter(([_, v]) => v)),
-  });
+  }, { skip: !isAuthenticated });
   
-  const { data: actionTypes } = useGetAuditActionTypesQuery();
+  const { data: actionTypes } = useGetAuditActionTypesQuery(undefined, { skip: !isAuthenticated });
   const [exportLogs, { isLoading: isExporting }] = useExportAuditLogsMutation();
   
   const handleExport = async (format: 'csv' | 'json') => {

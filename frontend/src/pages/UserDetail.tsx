@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
+import { useAppSelector } from '../store/hooks';
 import {
   useGetUserDetailQuery,
   useForceLogoutUserMutation,
@@ -30,9 +31,10 @@ export default function UserDetail() {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
   const [showConfirmLogout, setShowConfirmLogout] = useState(false);
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
   
   const { data: user, isLoading, error } = useGetUserDetailQuery(userId!, {
-    skip: !userId,
+    skip: !userId || !isAuthenticated,
   });
   
   const [forceLogout, { isLoading: isLoggingOut }] = useForceLogoutUserMutation();

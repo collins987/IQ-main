@@ -21,12 +21,13 @@ import {
 
 export default function Overview() {
   const { selectedTimeRange } = useAppSelector((state) => state.dashboard);
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
   
-  // Fetch all dashboard data
-  const { data: health, isLoading: healthLoading, error: healthError } = useGetSystemHealthQuery();
-  const { data: userStats, isLoading: statsLoading } = useGetUserStatsQuery();
-  const { data: riskSummary, isLoading: riskLoading } = useGetRiskSummaryQuery(selectedTimeRange);
-  const { data: events, isLoading: eventsLoading } = useGetEventsQuery({ limit: 10 });
+  // Fetch all dashboard data - skip if not authenticated
+  const { data: health, isLoading: healthLoading, error: healthError } = useGetSystemHealthQuery(undefined, { skip: !isAuthenticated });
+  const { data: userStats, isLoading: statsLoading } = useGetUserStatsQuery(undefined, { skip: !isAuthenticated });
+  const { data: riskSummary, isLoading: riskLoading } = useGetRiskSummaryQuery(selectedTimeRange, { skip: !isAuthenticated });
+  const { data: events, isLoading: eventsLoading } = useGetEventsQuery({ limit: 10 }, { skip: !isAuthenticated });
   
   const isLoading = healthLoading || statsLoading || riskLoading || eventsLoading;
   

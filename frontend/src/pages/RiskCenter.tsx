@@ -27,14 +27,15 @@ import {
 
 export default function RiskCenter() {
   const { selectedTimeRange } = useAppSelector((state) => state.dashboard);
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
   const [riskThreshold, setRiskThreshold] = useState(70);
   
-  const { data: summary, isLoading: summaryLoading } = useGetRiskSummaryQuery(selectedTimeRange);
+  const { data: summary, isLoading: summaryLoading } = useGetRiskSummaryQuery(selectedTimeRange, { skip: !isAuthenticated });
   const { data: highRiskUsers, isLoading: usersLoading } = useGetHighRiskUsersQuery({
     threshold: riskThreshold,
     limit: 20,
-  });
-  const { data: rules, isLoading: rulesLoading } = useGetRiskRulesQuery();
+  }, { skip: !isAuthenticated });
+  const { data: rules, isLoading: rulesLoading } = useGetRiskRulesQuery(undefined, { skip: !isAuthenticated });
   
   const isLoading = summaryLoading || usersLoading || rulesLoading;
   

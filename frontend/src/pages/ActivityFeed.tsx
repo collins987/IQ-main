@@ -33,6 +33,7 @@ const eventTypeConfig: Record<string, { label: string; color: string }> = {
 export default function ActivityFeed() {
   const dispatch = useAppDispatch();
   const { liveEventsEnabled, recentEvents } = useAppSelector((state) => state.dashboard);
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
   const [severityFilter, setSeverityFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   
@@ -40,7 +41,7 @@ export default function ActivityFeed() {
   const { data: historicalEvents, isLoading, refetch } = useGetEventsQuery({
     limit: 100,
     severity: severityFilter !== 'all' ? severityFilter : undefined,
-  });
+  }, { skip: !isAuthenticated });
   
   // Combine live events with historical events
   const allEvents = [

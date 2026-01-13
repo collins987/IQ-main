@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useAppSelector } from '../store/hooks';
 import { useGetActiveUsersQuery, useGetUserStatsQuery } from '../services/dashboardApi';
 import {
   formatDate,
@@ -25,13 +26,14 @@ export default function Users() {
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState<SortField>('login_time');
   const [searchQuery, setSearchQuery] = useState('');
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
   
-  const { data: userStats, isLoading: statsLoading } = useGetUserStatsQuery();
+  const { data: userStats, isLoading: statsLoading } = useGetUserStatsQuery(undefined, { skip: !isAuthenticated });
   const { data: usersData, isLoading: usersLoading, isFetching } = useGetActiveUsersQuery({
     page,
     page_size: 20,
     sort_by: sortBy,
-  });
+  }, { skip: !isAuthenticated });
   
   const isLoading = statsLoading || usersLoading;
   

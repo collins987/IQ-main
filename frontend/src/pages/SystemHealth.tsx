@@ -16,9 +16,10 @@ import {
 
 export default function SystemHealth() {
   const { selectedTimeRange } = useAppSelector((state) => state.dashboard);
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
   
-  const { data: health, isLoading: healthLoading, error: healthError } = useGetSystemHealthQuery();
-  const { data: metrics, isLoading: metricsLoading } = useGetSystemMetricsQuery(selectedTimeRange);
+  const { data: health, isLoading: healthLoading, error: healthError } = useGetSystemHealthQuery(undefined, { skip: !isAuthenticated });
+  const { data: metrics, isLoading: metricsLoading } = useGetSystemMetricsQuery(selectedTimeRange, { skip: !isAuthenticated });
   
   const isLoading = healthLoading || metricsLoading;
   

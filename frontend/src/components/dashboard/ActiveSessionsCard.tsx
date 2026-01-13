@@ -3,13 +3,15 @@ import { formatRelativeTime, getInitials, getRiskLevel, getRiskColorClass } from
 import { Link } from 'react-router-dom';
 import clsx from 'clsx';
 import LoadingSpinner from '../common/LoadingSpinner';
+import { useAppSelector } from '../../store/hooks';
 
 export default function ActiveSessionsCard() {
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
   const { data, isLoading, error } = useGetActiveUsersQuery({
     page: 1,
     page_size: 5,
     sort_by: 'login_time',
-  });
+  }, { skip: !isAuthenticated });
   
   if (isLoading) {
     return (
