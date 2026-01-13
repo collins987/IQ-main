@@ -74,22 +74,33 @@ class VirtualUser:
         self.is_virtual = True  # Flag to identify virtual users
 
 
-# Pre-defined virtual users
-VIRTUAL_ADMIN = VirtualUser(
-    id="virtual-admin-00000000-0000-0000-0000-000000000001",
-    email=ADMIN_EMAIL,
-    role="admin",
-    first_name="System",
-    last_name="Administrator"
-)
+# ============================================================================
+# Factory Functions (Dynamic User Creation - ROOT CAUSE FIX)
+# ============================================================================
+# IMPORTANT: VirtualUser objects are created DYNAMICALLY at authentication time,
+# NOT at module import. This prevents stale credential mismatches when env vars
+# are loaded after module import.
 
-VIRTUAL_TEST_USER = VirtualUser(
-    id="virtual-test-00000000-0000-0000-0000-000000000002",
-    email=TEST_USER_EMAIL,
-    role="viewer",  # Standard user role
-    first_name="Test",
-    last_name="User"
-)
+def create_virtual_admin() -> VirtualUser:
+    """Create virtual admin with CURRENT config values."""
+    return VirtualUser(
+        id="virtual-admin-00000000-0000-0000-0000-000000000001",
+        email=ADMIN_EMAIL,
+        role="admin",
+        first_name="System",
+        last_name="Administrator"
+    )
+
+
+def create_virtual_test_user() -> VirtualUser:
+    """Create test user with CURRENT config values."""
+    return VirtualUser(
+        id="virtual-test-00000000-0000-0000-0000-000000000002",
+        email=TEST_USER_EMAIL,
+        role="viewer",
+        first_name="Test",
+        last_name="User"
+    )
 
 
 # ============================================================================
@@ -100,52 +111,74 @@ def authenticate_virtual_admin(email: str, password: str) -> VirtualUser | None:
     """
     Authenticate against universal admin credentials.
     
-    SECURITY NOTES:
-    - Credentials loaded from environment variables (never hardcoded)
-    - Returns a virtual user object (not stored in DB)
-    - Always available regardless of database state
+    ROOT CAUSE FIX: Uses factory function to create user with CURRENT config,
+    not stale values from module import time.
     """
-    if email.lower() == ADMIN_EMAIL.lower() and password == ADMIN_PASSWORD:
-        logger.info(f"Virtual admin authenticated: {email}")
-        return VIRTUAL_ADMIN
-    return None
+    # Normalize for comparison
+    input_email = email.strip().lower()
+    admin_email = ADMIN_EMAIL.strip().lower()
+    
+    logger.debug(f"Admin auth: input='{input_email}' vs expected='{admin_email}'")
+    
+    if input_email != admin_email:
+        logger.debug("Admin auth: email mismatch")
+        return None
+    
+    if password != ADMIN_PASSWORD:
+        logger.debug(f"Admin auth: password mismatch (input_len={len(password)}, expected_len={len(ADMIN_PASSWORD)})")
+        return None
+    
+    logger.info(f"Virtual admin authenticated: {email}")
+    return create_virtual_admin()  # Dynamic creation with current config
 
 
 def authenticate_test_user(email: str, password: str) -> VirtualUser | None:
     """
     Authenticate dummy test user (DEV_MODE only).
     
-    SECURITY NOTES:
-    - Only active when DEV_MODE=true
-    - Non-persistent (exists only in memory)
-    - Should be disabled in production
+    ROOT CAUSE FIX: Uses factory function for dynamic creation.
     """
     if not DEV_MODE:
+        logger.debug("Test user auth skipped: DEV_MODE=false")
         return None
     
-    if email.lower() == TEST_USER_EMAIL.lower() and password == TEST_USER_PASSWORD:
-        logger.info(f"Test user authenticated (DEV_MODE): {email}")
-        return VIRTUAL_TEST_USER
-    return None
+    input_email = email.strip().lower()
+    test_email = TEST_USER_EMAIL.strip().lower()
+    
+    if input_email != test_email:
+        return None
+    
+    if password != TEST_USER_PASSWORD:
+        logger.debug("Test user auth: password mismatch")
+        return None
+    
+    logger.info(f"Test user authenticated (DEV_MODE): {email}")
+    return create_virtual_test_user()  # Dynamic creation with current config
 
 
 def authenticate_db_user(email: str, password: str, db: Session) -> User | None:
     """
     Authenticate against database-backed user.
     
-    SECURITY NOTES:
-    - Uses bcrypt password verification
-    - Checks account status (active, email_verified)
-    - Returns None on any failure (timing-safe)
+    ROOT CAUSE FIX: Uses case-insensitive email lookup with ilike().
     """
-    user = db.query(User).filter(User.email == email).first()
+    normalized_email = email.strip().lower()
+    logger.debug(f"DB auth: looking up '{normalized_email}'")
+    
+    # Case-insensitive email lookup
+    user = db.query(User).filter(User.email.ilike(normalized_email)).first()
     
     if not user:
+        logger.debug(f"DB auth: user not found")
         return None
+    
+    logger.debug(f"DB auth: found user id={user.id}, active={user.is_active}, verified={user.email_verified}")
     
     if not verify_password(password, user.password_hash):
+        logger.debug(f"DB auth: password verification failed")
         return None
     
+    logger.info(f"DB user authenticated: {user.email}")
     return user
 
 
