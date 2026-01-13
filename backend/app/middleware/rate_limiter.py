@@ -324,6 +324,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
         """Process request through rate limiter."""
         
+        # Skip WebSocket connections - BaseHTTPMiddleware doesn't support them
+        if request.scope.get("type") == "websocket":
+            return await call_next(request)
+        
         path = request.url.path
         
         # Skip exempt paths

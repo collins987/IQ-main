@@ -30,6 +30,10 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
     ]
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        # Skip WebSocket connections - BaseHTTPMiddleware doesn't support them
+        if request.scope.get("type") == "websocket":
+            return await call_next(request)
+        
         # Generate request ID
         request_id = str(uuid.uuid4())
         request.state.request_id = request_id
@@ -171,6 +175,10 @@ class UserTrackingMiddleware(BaseHTTPMiddleware):
     """
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        # Skip WebSocket connections - BaseHTTPMiddleware doesn't support them
+        if request.scope.get("type") == "websocket":
+            return await call_next(request)
+        
         # Try to extract user ID from token
         auth_header = request.headers.get("authorization", "")
         

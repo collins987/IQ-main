@@ -277,6 +277,10 @@ class PIIScrubberMiddleware(BaseHTTPMiddleware):
         Request body scrubbing is done at the logging layer.
         """
         
+        # Skip WebSocket connections - BaseHTTPMiddleware doesn't support them
+        if request.scope.get("type") == "websocket":
+            return await call_next(request)
+        
         # Store original request for context
         request.state.pii_scrubber = self.scrubber
         

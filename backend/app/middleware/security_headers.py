@@ -14,6 +14,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Add security headers to all HTTP responses."""
     
     async def dispatch(self, request: Request, call_next):
+        # Skip WebSocket connections - BaseHTTPMiddleware doesn't support them
+        if request.scope.get("type") == "websocket":
+            return await call_next(request)
+        
         response = await call_next(request)
         
         # Prevent MIME sniffing (OWASP A06:2021 - Vulnerable Components)
