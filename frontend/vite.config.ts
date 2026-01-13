@@ -23,11 +23,12 @@ export default defineConfig({
       },
 
       // WebSocket stream for live dashboard events
+      // Must match the full path prefix that the frontend uses
       '/api/admin/dashboard/ws': {
-        target: 'ws://localhost:8000',
+        target: 'http://localhost:8000',
         ws: true,
         changeOrigin: true,
-        rewrite: (path) => path,
+        // Do NOT rewrite - backend expects /api/admin/dashboard/ws/events
       },
 
       // All other backend APIs (e.g. /api/auth/login) keep the original
