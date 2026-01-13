@@ -294,22 +294,27 @@ def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
     # =========================================================================
     # STEP 5: Audit logging
     # =========================================================================
-    audit = AuditLog(
-        id=str(uuid.uuid4()),
-        actor_id=authenticated_user.id,
-        action="login",
-        target=authenticated_user.id,
-        event_metadata={
-            "ip_address": ip_address,
-            "user_type": "virtual" if is_virtual_user else "database",
-            "role": authenticated_user.role
-        },
-        timestamp=datetime.utcnow()
-    )
-    db.add(audit)
-    db.commit()
+    # IMPORTANT:
+    # - Database users: write full audit log entry (actor_id FK to users.id)
+    # - Virtual users (admin/test): skip DB audit to avoid FK constraint errors
+    #   because virtual users do not exist in the users table.
+    if not is_virtual_user:
+        audit = AuditLog(
+            id=str(uuid.uuid4()),
+            actor_id=authenticated_user.id,
+            action="login",
+            target=authenticated_user.id,
+            event_metadata={
+                "ip_address": ip_address,
+                "user_type": "database",
+                "role": authenticated_user.role
+            },
+            timestamp=datetime.utcnow()
+        )
+        db.add(audit)
+        db.commit()
     
-    logger.info(f"Login successful: {authenticated_user.email} (role={authenticated_user.role})")
+    logger.info(f"Login successful: {authenticated_user.email} (role={authenticated_user.role}, virtual={is_virtual_user})")
     
     return {
         "access_token": access_token,
