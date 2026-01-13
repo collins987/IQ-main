@@ -10,7 +10,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import { logout } from '../../features/authSlice';
-import { toggleLiveEvents, setTimeRange } from '../../features/dashboardSlice';
+import { toggleLiveEvents, setTimeRange, addNotification } from '../../features/dashboardSlice';
 import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 
@@ -32,6 +32,14 @@ export default function Header() {
   const handleLogout = () => {
     dispatch(logout());
     navigate('/login');
+  };
+
+  const handleSettings = () => {
+    dispatch(addNotification({
+      id: `settings-${Date.now()}`,
+      type: 'info',
+      message: 'Settings page coming soon!',
+    }));
   };
   
   return (
@@ -157,6 +165,7 @@ export default function Header() {
                 <Menu.Item>
                   {({ active }) => (
                     <button
+                      onClick={handleSettings}
                       className={clsx(
                         'flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm',
                         active ? 'bg-dashboard-hover text-white' : 'text-gray-300'

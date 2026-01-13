@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
+import { Dialog, Transition } from '@headlessui/react';
 import { useGetAuditLogsQuery, useGetAuditActionTypesQuery, useExportAuditLogsMutation } from '../services/dashboardApi';
 import { formatDate } from '../utils/helpers';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -10,6 +11,19 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 
+interface AuditLogMetadata {
+  [key: string]: unknown;
+}
+
+interface SelectedLog {
+  id: string;
+  timestamp: string | null;
+  actor: { id: string; email: string };
+  action: string;
+  target: string | null;
+  metadata: AuditLogMetadata | null;
+}
+
 export default function AuditLogs() {
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState({
@@ -19,6 +33,8 @@ export default function AuditLogs() {
     end_date: '',
   });
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedLog, setSelectedLog] = useState<SelectedLog | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   
   const { data: logs, isLoading, isFetching } = useGetAuditLogsQuery({
     page,
@@ -244,7 +260,10 @@ export default function AuditLogs() {
                     <td>
                       {log.metadata ? (
                         <button
-                          onClick={() => console.log('Details:', log.metadata)}
+                          onClick={() => {
+                            setSelectedLog(log as SelectedLog);
+                            setIsModalOpen(true);
+                          }}
                           className="text-sm text-sentinel-400 hover:text-sentinel-300"
                         >
                           View
@@ -285,6 +304,90 @@ export default function AuditLogs() {
           </div>
         )}
       </div>
+
+      {/* Audit Log Details Modal */}
+      <Transition appear show={isModalOpen} as={Fragment}>
+        <Dialog as="div" className="relative z-50" onClose={() => setIsModalOpen(false)}>
+          <Transition.Child
+            as={Fragment}
+            enter="ease-out duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0 bg-black/60" />
+          </Transition.Child>
+
+          <div className="fixed inset-0 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4">
+              <Transition.Child
+                as={Fragment}
+                enter="ease-out duration-300"
+                enterFrom="opacity-0 scale-95"
+                enterTo="opacity-100 scale-100"
+                leave="ease-in duration-200"
+                leaveFrom="opacity-100 scale-100"
+                leaveTo="opacity-0 scale-95"
+              >
+                <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-xl bg-dashboard-card border border-dashboard-border p-6 shadow-xl transition-all">
+                  <div className="flex items-center justify-between mb-4">
+                    <Dialog.Title className="text-lg font-semibold text-white">
+                      Audit Log Details
+                    </Dialog.Title>
+                    <button
+                      onClick={() => setIsModalOpen(false)}
+                      className="text-gray-400 hover:text-white transition-colors"
+                    >
+                      <XMarkIcon className="h-5 w-5" />
+                    </button>
+                  </div>
+
+                  {selectedLog && (
+                    <div className="space-y-4">
+                      {/* Log Info */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-xs text-gray-500">Timestamp</label>
+                          <p className="text-sm text-white font-mono">
+                            {selectedLog.timestamp ? formatDate(selectedLog.timestamp, 'MMM d, yyyy HH:mm:ss') : 'N/A'}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500">Action</label>
+                          <p className="text-sm text-white">{selectedLog.action.replace(/_/g, ' ')}</p>
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500">Actor</label>
+                          <p className="text-sm text-white">{selectedLog.actor.email}</p>
+                          <p className="text-xs text-gray-500 font-mono">{selectedLog.actor.id}</p>
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500">Target</label>
+                          <p className="text-sm text-white font-mono">{selectedLog.target || '-'}</p>
+                        </div>
+                      </div>
+
+                      {/* Metadata */}
+                      {selectedLog.metadata && (
+                        <div>
+                          <label className="text-xs text-gray-500 mb-2 block">Metadata</label>
+                          <div className="bg-dashboard-bg rounded-lg p-4 overflow-auto max-h-64">
+                            <pre className="text-sm text-gray-300 font-mono whitespace-pre-wrap">
+                              {JSON.stringify(selectedLog.metadata, null, 2)}
+                            </pre>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </Dialog.Panel>
+              </Transition.Child>
+            </div>
+          </div>
+        </Dialog>
+      </Transition>
     </div>
   );
 }
