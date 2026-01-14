@@ -19,7 +19,6 @@ from app.core.seed import seed_all
 from app.core.logging import logger
 from app.services.graph_service import router as graph_router
 from app.services.message_center import router as message_router
-from app.api.auth import verify_jwt_token  # Adjust import if needed
 import traceback
 
 
@@ -313,7 +312,8 @@ async def admin_dashboard_events_ws(websocket: WebSocket):
         await websocket.close(code=4401)
         return
     try:
-        user = verify_jwt_token(token)
+        # Use the new verify_jwt_token function from auth
+        user = auth.verify_jwt_token(token)
     except Exception:
         await websocket.close(code=4403)
         return

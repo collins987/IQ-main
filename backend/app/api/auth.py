@@ -18,7 +18,7 @@ from fastapi import APIRouter, HTTPException, Depends, Request, status
 from sqlalchemy.orm import Session
 from app.core.db import SessionLocal
 from app.models import User, AuditLog
-from app.core.security import verify_password, create_access_token
+from app.core.security import verify_password, create_access_token, decode_access_token
 from app.core.auth_utils import (
     create_and_store_refresh_token,
     validate_refresh_token,
@@ -458,4 +458,16 @@ def logout_all_devices(current_user: User = Depends(get_current_user), db: Sessi
 def get_current_user_info(current_user: User = Depends(get_current_user)):
     """Get current authenticated user info."""
     return create_user_info(current_user)
+
+
+def verify_jwt_token(token: str):
+    """
+    Verifies and decodes a JWT access token.
+    Raises Exception if invalid.
+    Returns the decoded payload (dict).
+    """
+    payload = decode_access_token(token)
+    if not payload or "sub" not in payload:
+        raise Exception("Invalid JWT token")
+    return payload
 
