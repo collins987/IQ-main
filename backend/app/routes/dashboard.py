@@ -896,7 +896,20 @@ async def websocket_events(websocket: WebSocket, db: Session = Depends(get_db)):
     - System status changes
     - Admin actions
     """
-    # Note: In production, verify JWT token from query params
+    # --- JWT Authentication for WebSocket ---
+    token = websocket.query_params.get("token")
+    if not token:
+        await websocket.close(code=4401)
+        logger.warning("WebSocket connection rejected: No token provided")
+        return
+    from app.dependencies import get_current_user
+    try:
+        user = get_current_user.__wrapped__(token, db)
+        logger.info(f"WebSocket connect: {user.email} ({user.role})")
+    except Exception as e:
+        await websocket.close(code=4401)
+        logger.warning(f"WebSocket connection rejected: Invalid token ({e})")
+        return
     await dashboard_manager.connect(websocket)
     
     try:
@@ -904,9 +917,9 @@ async def websocket_events(websocket: WebSocket, db: Session = Depends(get_db)):
         await websocket.send_json({
             "type": "connected",
             "message": "Dashboard WebSocket connected",
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
+            "user": getattr(user, "email", None)
         })
-        
         # Keep connection alive and listen for messages
         while True:
             try:
@@ -915,19 +928,17 @@ async def websocket_events(websocket: WebSocket, db: Session = Depends(get_db)):
                     websocket.receive_text(),
                     timeout=30.0
                 )
-                
                 # Handle ping
                 if data == "ping":
                     await websocket.send_json({"type": "pong"})
-                
             except asyncio.TimeoutError:
                 # Send heartbeat
                 await websocket.send_json({
                     "type": "heartbeat",
                     "timestamp": datetime.utcnow().isoformat()
                 })
-                
     except WebSocketDisconnect:
+        logger.info(f"WebSocket disconnect: {getattr(user, 'email', 'unknown')}")
         dashboard_manager.disconnect(websocket)
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
