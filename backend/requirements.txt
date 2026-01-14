@@ -58,3 +58,5 @@ cryptography==42.0.0
 
 # Async utilities
 aiofiles==23.2.1
+
+PyJWT>=2.0.0
