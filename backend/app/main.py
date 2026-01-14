@@ -96,6 +96,21 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Print all registered routes on startup
+@app.on_event("startup")
+async def log_registered_routes():
+    from starlette.routing import WebSocketRoute
+    route_list = []
+    for route in app.routes:
+        if hasattr(route, 'path'):
+            route_type = type(route).__name__
+            route_list.append(f"{route_type}: {getattr(route, 'path', '')}")
+    for route in app.router.routes:
+        if hasattr(route, 'path'):
+            route_type = type(route).__name__
+            route_list.append(f"{route_type}: {getattr(route, 'path', '')}")
+    logger.info("Registered routes (including WebSockets):\n" + "\n".join(route_list))
+
 # Initialize Prometheus instrumentator BEFORE middleware setup
 Instrumentator().instrument(app).expose(app)
 

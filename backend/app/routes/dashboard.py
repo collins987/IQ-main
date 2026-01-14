@@ -887,6 +887,7 @@ dashboard_manager = DashboardConnectionManager()
 
 @router.websocket("/ws/events")
 async def websocket_events(websocket: WebSocket, db: Session = Depends(get_db)):
+    logger.info("WebSocket endpoint /api/admin/dashboard/ws/events: Connection attempt received")
     """
     WebSocket endpoint for real-time dashboard events.
     
