@@ -3,7 +3,10 @@ from jose import jwt
 from passlib.context import CryptContext
 import os
 import secrets
-from app.config import ALGORITHM, SECRET_KEY, REFRESH_TOKEN_EXPIRE_DAYS, ACCESS_TOKEN_EXPIRE_MINUTES
+import jwt
+from datetime import datetime, timezone
+from fastapi import HTTPException, status
+from app.config import ALGORITHM, SECRET_KEY, REFRESH_TOKEN_EXPIRE_DAYS, ACCESS_TOKEN_EXPIRE_MINUTES, JWT_SECRET_KEY, JWT_ALGORITHM
 
 pwd_context = CryptContext(
     schemes=["bcrypt"],
@@ -25,3 +28,29 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
 def create_refresh_token() -> str:
     """Generate a secure refresh token"""
     return secrets.token_urlsafe(32)
+
+def decode_access_token(token: str) -> dict:
+    """
+    Decodes and validates a JWT access token.
+    Raises HTTPException if invalid or expired.
+    Returns the decoded payload (dict).
+    """
+    try:
+        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+        exp = payload.get("exp")
+        if exp and datetime.fromtimestamp(exp, tz=timezone.utc) < datetime.now(timezone.utc):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token expired"
+            )
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token expired"
+        )
+    except jwt.InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token"
+        )
