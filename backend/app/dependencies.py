@@ -15,7 +15,7 @@ from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 from app.models import User, AuditLog
 from app.core.db import SessionLocal
-from app.config import SECRET_KEY, ALGORITHM, ADMIN_EMAIL, TEST_USER_EMAIL, DEV_MODE
+from app.config import JWT_SECRET_KEY, JWT_ALGORITHM, ADMIN_EMAIL, TEST_USER_EMAIL, DEV_MODE
 import uuid
 from datetime import datetime
 from typing import Union
@@ -74,7 +74,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     )
     
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
         user_id: str = payload.get("sub")
         user_role: str = payload.get("role", "viewer")
         user_email: str = payload.get("email", "")
