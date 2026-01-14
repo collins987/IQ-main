@@ -19,6 +19,10 @@ from typing import Dict, List, Optional
 SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey")
 ALGORITHM = "HS256"
 
+# JWT Configuration
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "super-secret-key")
+JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+
 # ============================================================================
 # Authentication Configuration
 # ============================================================================

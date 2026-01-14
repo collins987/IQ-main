@@ -6,7 +6,7 @@ import secrets
 import jwt
 from datetime import datetime, timezone
 from fastapi import HTTPException, status
-from app.config import ALGORITHM, SECRET_KEY, REFRESH_TOKEN_EXPIRE_DAYS, ACCESS_TOKEN_EXPIRE_MINUTES, JWT_SECRET_KEY, JWT_ALGORITHM
+from app.config import JWT_SECRET_KEY, JWT_ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS
 
 pwd_context = CryptContext(
     schemes=["bcrypt"],
