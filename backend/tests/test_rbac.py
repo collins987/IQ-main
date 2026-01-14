@@ -15,7 +15,7 @@ from app.core.db import SessionLocal, engine
 from app.models import Base, User, AuditLog, Organization
 from app.core.security import hash_password
 from app.services.token_service import create_access_token
-from app.config import ROLES, SECRET_KEY, ALGORITHM
+from app.config import ROLES
 
 # Setup test database
 @pytest.fixture(scope="session", autouse=True)

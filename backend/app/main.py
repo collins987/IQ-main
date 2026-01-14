@@ -6,7 +6,7 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from sqlalchemy import text
 from app.api import auth
-from app.routes import users, admin, email_verification, password_reset, analytics, events, dashboard
+from app.routes import users, admin, email_verification, password_reset, analytics, events, dashboard, dashboard_ws
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.middleware.request_logging import RequestLoggingMiddleware, UserTrackingMiddleware
 from app.middleware.pii_scrubber import PIIScrubberMiddleware
@@ -148,6 +148,10 @@ app.include_router(password_reset.router)  # MILESTONE 6: Step 4
 app.include_router(analytics.router)  # MILESTONE 8: Analytics & monitoring
 app.include_router(events.router)  # Event processing routes
 app.include_router(dashboard.router)  # Admin Dashboard API
+app.include_router(
+    dashboard_ws.router,
+    prefix="/api/admin/dashboard"
+)
 
 # ============================================================================
 # New Feature Routes

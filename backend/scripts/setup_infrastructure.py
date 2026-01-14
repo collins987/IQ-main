@@ -151,7 +151,7 @@ def setup_vault() -> bool:
             secret={
                 "database_url": os.getenv("DATABASE_URL", "postgresql://postgres:postgres@postgres:5432/sentineliq"),
                 "redis_url": os.getenv("REDIS_URL", "redis://redis:6379/0"),
-                "jwt_secret": os.getenv("SECRET_KEY", "your-jwt-secret-here"),
+                "jwt_secret": os.getenv("JWT_SECRET_KEY", "your-jwt-secret-here"),
                 "setup_complete": "true",
                 "setup_time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
             }
