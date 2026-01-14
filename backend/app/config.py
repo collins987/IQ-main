@@ -16,8 +16,6 @@ import logging
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
-SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey")
-ALGORITHM = "HS256"
 
 # JWT Configuration
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "super-secret-key")
@@ -42,7 +40,7 @@ TEST_USER_PASSWORD = os.getenv("TEST_USER_PASSWORD", "UserTest@123")
 # ============================================================================
 # Token Configuration
 # ============================================================================
-ACCESS_TOKEN_EXPIRE_MINUTES = 30  # Short-lived access token
+ACCESS_TOKEN_EXPIRE_MINUTES = 60  # Short-lived access token
 REFRESH_TOKEN_EXPIRE_DAYS = 7  # Longer-lived refresh token
 MAX_SESSIONS_PER_USER = 3  # Limit concurrent sessions
 MAX_LOGIN_ATTEMPTS = 5  # Failed attempts before lockout
@@ -217,8 +215,8 @@ class Settings:
     Use this class for type-safe configuration access.
     """
     # Core
-    secret_key: str = SECRET_KEY
-    algorithm: str = ALGORITHM
+    jwt_secret_key: str = JWT_SECRET_KEY
+    jwt_algorithm: str = JWT_ALGORITHM
     access_token_expire_minutes: int = ACCESS_TOKEN_EXPIRE_MINUTES
     refresh_token_expire_days: int = REFRESH_TOKEN_EXPIRE_DAYS
     

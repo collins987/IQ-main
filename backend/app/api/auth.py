@@ -468,6 +468,9 @@ def verify_jwt_token(token: str):
     """
     payload = decode_access_token(token)
     if not payload or "sub" not in payload:
-        raise Exception("Invalid JWT token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid JWT token"
+        )
     return payload
 
