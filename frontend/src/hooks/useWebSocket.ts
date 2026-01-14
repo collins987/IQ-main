@@ -3,6 +3,9 @@ import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { addEvent, addNotification } from '../features/dashboardSlice';
 import type { DashboardEvent } from '../services/dashboardApi';
 
+// Use VITE_API_WS_URL from environment, fallback to ws://localhost:8000
+const WS_BASE_URL = import.meta.env.VITE_API_WS_URL || (window.location.protocol === 'https:' ? 'wss://localhost:8000' : 'ws://localhost:8000');
+
 // Configuration constants
 const MAX_RECONNECT_ATTEMPTS = 5;
 const INITIAL_RECONNECT_DELAY_MS = 1000;
@@ -82,8 +85,10 @@ export function useWebSocket(enabled: boolean) {
       wsRef.current = null;
     }
     
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/api/admin/dashboard/ws/events?token=${token}`;
+    // Compose WebSocket URL from env, fallback to backend default
+    let wsUrl = `${WS_BASE_URL}/api/admin/dashboard/ws/events?token=${token}`;
+    // Remove any accidental double slashes
+    wsUrl = wsUrl.replace(/([^:]\/)\/+/, '$1/');
     
     try {
       const ws = new WebSocket(wsUrl);
@@ -173,9 +178,9 @@ export function useWebSocket(enabled: boolean) {
           pingIntervalRef.current = null;
         }
         
-        // Don't reconnect on clean close or auth failures
-        if (event.wasClean || event.code === 1008 || event.code === 4001 || event.code === 4003) {
-          console.log(`WebSocket: Closed cleanly (code: ${event.code})`);
+        // Don't reconnect on clean close or auth failures (1008, 4001, 4003, 4401)
+        if (event.wasClean || event.code === 1008 || event.code === 4001 || event.code === 4003 || event.code === 4401) {
+          console.log(`WebSocket: Closed cleanly or auth failed (code: ${event.code})`);
           return;
         }
         

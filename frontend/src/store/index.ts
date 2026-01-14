@@ -11,7 +11,10 @@ export const store = configureStore({
     dashboard: dashboardReducer,
   },
   middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware().concat(dashboardApi.middleware),
+    getDefaultMiddleware({
+      serializableCheck: process.env.NODE_ENV === 'production',
+      immutableCheck: process.env.NODE_ENV === 'production',
+    }).concat(dashboardApi.middleware),
 });
 
 setupListeners(store.dispatch);
