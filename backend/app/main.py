@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Response, Request
+from fastapi import FastAPI, Response, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
@@ -19,6 +19,7 @@ from app.core.seed import seed_all
 from app.core.logging import logger
 from app.services.graph_service import router as graph_router
 from app.services.message_center import router as message_router
+from app.api.auth import verify_jwt_token  # Adjust import if needed
 import traceback
 
 
@@ -299,4 +300,30 @@ def get_metrics():
         content=metrics_output,
         media_type="text/plain; version=0.0.4; charset=utf-8"
     )
+
+
+@app.websocket("/api/admin/dashboard/ws/events")
+async def admin_dashboard_events_ws(websocket: WebSocket):
+    """
+    WebSocket endpoint for admin dashboard events.
+    Expects JWT token as query param (?token=...).
+    """
+    token = websocket.query_params.get("token")
+    if not token:
+        await websocket.close(code=4401)
+        return
+    try:
+        user = verify_jwt_token(token)
+    except Exception:
+        await websocket.close(code=4403)
+        return
+
+    await websocket.accept()
+    try:
+        while True:
+            # Keep connection alive, echo/ping for now
+            data = await websocket.receive_text()
+            await websocket.send_text(f"pong: {data}")
+    except WebSocketDisconnect:
+        pass
 
