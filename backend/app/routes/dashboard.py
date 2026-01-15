@@ -898,24 +898,29 @@ async def websocket_events(websocket: WebSocket):
     try:
         payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
         logger.info(f"WS token payload: {payload}")
+        # Manual JWT validation
         if not payload or payload.get("role") != "admin":
             await websocket.close(code=1008)
             logger.warning("WebSocket connection rejected: Invalid role or payload")
             return
-        # Optionally check is_virtual and DB user here if needed
+        # Accept virtual admin users
+        if not payload.get("is_virtual", False) and not payload.get("email"):
+            await websocket.close(code=1008)
+            logger.warning("WebSocket connection rejected: Missing email for non-virtual admin")
+            return
+        await websocket.accept()
     except JWTError as e:
         await websocket.close(code=1008)
         logger.warning(f"WebSocket connection rejected: Invalid token ({e})")
         return
-    await dashboard_manager.connect(websocket)
-    
+
     try:
         # Send initial connection message
         await websocket.send_json({
             "type": "connected",
             "message": "Dashboard WebSocket connected",
             "timestamp": datetime.utcnow().isoformat(),
-            "user": getattr(user, "email", None)
+            "user": payload.get("email", None)
         })
         # Keep connection alive and listen for messages
         while True:
@@ -935,7 +940,7 @@ async def websocket_events(websocket: WebSocket):
                     "timestamp": datetime.utcnow().isoformat()
                 })
     except WebSocketDisconnect:
-        logger.info(f"WebSocket disconnect: {getattr(user, 'email', 'unknown')}")
+        logger.info(f"WebSocket disconnect: {payload.get('email', 'unknown')}")
         dashboard_manager.disconnect(websocket)
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
