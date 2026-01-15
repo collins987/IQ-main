@@ -886,29 +886,25 @@ dashboard_manager = DashboardConnectionManager()
 
 
 @router.websocket("/ws/events")
-async def websocket_events(websocket: WebSocket, db: Session = Depends(get_db)):
+async def websocket_events(websocket: WebSocket):
     logger.info("WebSocket endpoint /api/admin/dashboard/ws/events: Connection attempt received")
-    """
-    WebSocket endpoint for real-time dashboard events.
-    
-    Streams:
-    - User login/logout events
-    - Risk alerts
-    - System status changes
-    - Admin actions
-    """
-    # --- JWT Authentication for WebSocket ---
     token = websocket.query_params.get("token")
     if not token:
-        await websocket.close(code=4401)
+        await websocket.close(code=1008)
         logger.warning("WebSocket connection rejected: No token provided")
         return
-    from app.dependencies import get_current_user
+    from jose import jwt, JWTError
+    from app.config import JWT_SECRET_KEY, JWT_ALGORITHM
     try:
-        user = get_current_user.__wrapped__(token, db)
-        logger.info(f"WebSocket connect: {user.email} ({user.role})")
-    except Exception as e:
-        await websocket.close(code=4401)
+        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+        logger.info(f"WS token payload: {payload}")
+        if not payload or payload.get("role") != "admin":
+            await websocket.close(code=1008)
+            logger.warning("WebSocket connection rejected: Invalid role or payload")
+            return
+        # Optionally check is_virtual and DB user here if needed
+    except JWTError as e:
+        await websocket.close(code=1008)
         logger.warning(f"WebSocket connection rejected: Invalid token ({e})")
         return
     await dashboard_manager.connect(websocket)
